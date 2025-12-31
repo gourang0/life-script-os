@@ -12,6 +12,7 @@ import Routines from "./pages/Routines";
 import Health from "./pages/Health";
 import Analytics from "./pages/Analytics";
 import Exceptions from "./pages/Exceptions";
+import Goals from "./pages/Goals";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/health" element={<Health />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/exceptions" element={<Exceptions />} />
+            <Route path="/goals" element={<Goals />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

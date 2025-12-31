@@ -50,6 +50,51 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_goals: {
+        Row: {
+          created_at: string
+          goal_date: string
+          id: string
+          notes: string | null
+          sleep_hours_actual: number | null
+          sleep_hours_target: number | null
+          steps_actual: number | null
+          steps_target: number | null
+          updated_at: string
+          user_id: string
+          work_hours_actual: number | null
+          work_hours_target: number | null
+        }
+        Insert: {
+          created_at?: string
+          goal_date?: string
+          id?: string
+          notes?: string | null
+          sleep_hours_actual?: number | null
+          sleep_hours_target?: number | null
+          steps_actual?: number | null
+          steps_target?: number | null
+          updated_at?: string
+          user_id: string
+          work_hours_actual?: number | null
+          work_hours_target?: number | null
+        }
+        Update: {
+          created_at?: string
+          goal_date?: string
+          id?: string
+          notes?: string | null
+          sleep_hours_actual?: number | null
+          sleep_hours_target?: number | null
+          steps_actual?: number | null
+          steps_target?: number | null
+          updated_at?: string
+          user_id?: string
+          work_hours_actual?: number | null
+          work_hours_target?: number | null
+        }
+        Relationships: []
+      }
       daily_summaries: {
         Row: {
           ai_feedback: string | null
@@ -479,6 +524,50 @@ export type Database = {
           wake_time?: string | null
         }
         Relationships: []
+      }
+      streak_freeze_logs: {
+        Row: {
+          ai_response: string | null
+          created_at: string
+          exception_id: string | null
+          freeze_date: string
+          id: string
+          reason_category: string
+          reason_details: string | null
+          user_id: string
+          was_genuine: boolean | null
+        }
+        Insert: {
+          ai_response?: string | null
+          created_at?: string
+          exception_id?: string | null
+          freeze_date?: string
+          id?: string
+          reason_category: string
+          reason_details?: string | null
+          user_id: string
+          was_genuine?: boolean | null
+        }
+        Update: {
+          ai_response?: string | null
+          created_at?: string
+          exception_id?: string | null
+          freeze_date?: string
+          id?: string
+          reason_category?: string
+          reason_details?: string | null
+          user_id?: string
+          was_genuine?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streak_freeze_logs_exception_id_fkey"
+            columns: ["exception_id"]
+            isOneToOne: false
+            referencedRelation: "exception_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
