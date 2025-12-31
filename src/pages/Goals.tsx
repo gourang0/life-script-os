@@ -5,10 +5,13 @@ import { GoalCard } from '@/components/goals/GoalCard';
 import { CreateGoalDialog } from '@/components/goals/CreateGoalDialog';
 import { DailyTracker } from '@/components/goals/DailyTracker';
 import { GoalTargets } from '@/components/goals/GoalTargets';
+import { WeeklyProgressCharts } from '@/components/goals/WeeklyProgressCharts';
 import { StreakFreezeDialog } from '@/components/streak/StreakFreezeDialog';
+import { WeeklyTimetable } from '@/components/schedule/WeeklyTimetable';
+import { DailySpecialDialog } from '@/components/schedule/DailySpecialDialog';
 import { DateSelector } from '@/components/schedule/DateSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, Loader2 } from 'lucide-react';
+import { Target, Loader2, CalendarCheck } from 'lucide-react';
 
 export default function Goals() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -32,7 +35,8 @@ export default function Goals() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <DailySpecialDialog selectedDate={selectedDate} />
             <StreakFreezeDialog />
             <CreateGoalDialog />
           </div>
@@ -41,16 +45,28 @@ export default function Goals() {
         <Tabs defaultValue="daily">
           <TabsList>
             <TabsTrigger value="daily">Daily Tracking</TabsTrigger>
+            <TabsTrigger value="timetable">
+              <CalendarCheck className="h-4 w-4 mr-1" />
+              Timetable
+            </TabsTrigger>
             <TabsTrigger value="goals">Long-term Goals</TabsTrigger>
           </TabsList>
 
           <TabsContent value="daily" className="space-y-4 mt-4">
             <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
             
+            {/* Weekly Progress Charts */}
+            <WeeklyProgressCharts />
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <DailyTracker selectedDate={selectedDate} />
               <GoalTargets selectedDate={selectedDate} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="timetable" className="space-y-4 mt-4">
+            <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+            <WeeklyTimetable selectedDate={selectedDate} />
           </TabsContent>
 
           <TabsContent value="goals" className="mt-4">
