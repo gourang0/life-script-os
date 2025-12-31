@@ -9,6 +9,8 @@ import { DateSelector } from '@/components/schedule/DateSelector';
 import { TimeGrid } from '@/components/schedule/TimeGrid';
 import { AddScheduleEntryDialog } from '@/components/schedule/AddScheduleEntryDialog';
 import { ScheduleStats } from '@/components/schedule/ScheduleStats';
+import { ScheduleTemplatesDialog } from '@/components/schedule/ScheduleTemplatesDialog';
+import { NotesSheet } from '@/components/notes/NotesSheet';
 import { toast } from 'sonner';
 
 export default function Schedule() {
@@ -64,7 +66,11 @@ export default function Schedule() {
               Plan your day with time-blocked activities
             </p>
           </div>
-          <AddScheduleEntryDialog selectedDate={dateString} />
+          <div className="flex items-center gap-2">
+            <NotesSheet />
+            <ScheduleTemplatesDialog selectedDate={dateString} />
+            <AddScheduleEntryDialog selectedDate={dateString} />
+          </div>
         </div>
 
         {/* Date Selector */}
