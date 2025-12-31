@@ -10,6 +10,7 @@ import Tasks from "./pages/Tasks";
 import Schedule from "./pages/Schedule";
 import Routines from "./pages/Routines";
 import Health from "./pages/Health";
+import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -31,7 +32,7 @@ const App = () => (
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/routines" element={<Routines />} />
             <Route path="/health" element={<Health />} />
-            <Route path="/analytics" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/exceptions" element={<Dashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
