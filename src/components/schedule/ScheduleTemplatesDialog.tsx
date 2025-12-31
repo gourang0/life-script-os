@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Layers, Plus, Trash2, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Layers, Plus, Trash2, Check, X, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   useScheduleTemplates,
   useCreateScheduleTemplate,
@@ -20,6 +21,7 @@ import {
   useApplyTemplates,
   ScheduleTemplate,
 } from '@/hooks/useScheduleTemplates';
+import { useAutoApplyPreference } from '@/hooks/useAutoApplyTemplates';
 import { toast } from 'sonner';
 
 const DAYS = [
@@ -34,15 +36,30 @@ const DAYS = [
 
 interface ScheduleTemplatesDialogProps {
   selectedDate: string;
+  onAutoApplyChange?: (enabled: boolean) => void;
+  autoApplyEnabled?: boolean;
 }
 
-export function ScheduleTemplatesDialog({ selectedDate }: ScheduleTemplatesDialogProps) {
+export function ScheduleTemplatesDialog({ selectedDate, onAutoApplyChange, autoApplyEnabled = false }: ScheduleTemplatesDialogProps) {
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [autoApply, setAutoApply] = useState(autoApplyEnabled);
+  const { getPreference, setPreference } = useAutoApplyPreference();
+
+  useEffect(() => {
+    setAutoApply(getPreference());
+  }, []);
+
+  const handleAutoApplyToggle = (checked: boolean) => {
+    setAutoApply(checked);
+    setPreference(checked);
+    onAutoApplyChange?.(checked);
+    toast.success(checked ? 'Auto-apply enabled' : 'Auto-apply disabled');
+  };
 
   const { data: templates = [], isLoading } = useScheduleTemplates();
   const createTemplate = useCreateScheduleTemplate();
@@ -128,6 +145,18 @@ export function ScheduleTemplatesDialog({ selectedDate }: ScheduleTemplatesDialo
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Auto-apply toggle */}
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Auto-apply templates</p>
+                <p className="text-xs text-muted-foreground">Automatically populate schedule for new dates</p>
+              </div>
+            </div>
+            <Switch checked={autoApply} onCheckedChange={handleAutoApplyToggle} />
+          </div>
+
           <Button onClick={handleApply} disabled={applyTemplates.isPending || templates.length === 0} className="w-full gap-2">
             <Check className="h-4 w-4" />
             {applyTemplates.isPending ? 'Applying...' : 'Apply Templates to Today'}

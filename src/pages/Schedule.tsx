@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -11,12 +11,18 @@ import { AddScheduleEntryDialog } from '@/components/schedule/AddScheduleEntryDi
 import { ScheduleStats } from '@/components/schedule/ScheduleStats';
 import { ScheduleTemplatesDialog } from '@/components/schedule/ScheduleTemplatesDialog';
 import { NotesSheet } from '@/components/notes/NotesSheet';
+import { useAutoApplyTemplates, useAutoApplyPreference } from '@/hooks/useAutoApplyTemplates';
 import { toast } from 'sonner';
 
 export default function Schedule() {
   const { user, loading } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const dateString = format(selectedDate, 'yyyy-MM-dd');
+  const { getPreference } = useAutoApplyPreference();
+  const [autoApplyEnabled, setAutoApplyEnabled] = useState(getPreference());
+  
+  // Auto-apply templates when date changes
+  useAutoApplyTemplates(dateString, autoApplyEnabled);
   
   const { data: entries = [], isLoading } = useScheduleEntries(dateString);
   const completeEntry = useCompleteScheduleEntry();
@@ -68,7 +74,11 @@ export default function Schedule() {
           </div>
           <div className="flex items-center gap-2">
             <NotesSheet />
-            <ScheduleTemplatesDialog selectedDate={dateString} />
+            <ScheduleTemplatesDialog 
+              selectedDate={dateString} 
+              autoApplyEnabled={autoApplyEnabled}
+              onAutoApplyChange={setAutoApplyEnabled}
+            />
             <AddScheduleEntryDialog selectedDate={dateString} />
           </div>
         </div>

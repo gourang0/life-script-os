@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { StickyNote, Plus, Trash2, X } from 'lucide-react';
+import { StickyNote, Plus, Trash2, X, Pencil, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useNotes, useCreateNote, useDeleteNote, Note } from '@/hooks/useNotes';
+import { useNotes, useCreateNote, useDeleteNote, useUpdateNote, Note } from '@/hooks/useNotes';
 import { toast } from 'sonner';
 
 export function NotesSheet() {
@@ -118,6 +118,63 @@ export function NotesSheet() {
 }
 
 function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(note.title || '');
+  const [editContent, setEditContent] = useState(note.content);
+  const updateNote = useUpdateNote();
+
+  const handleSave = async () => {
+    if (!editContent.trim()) {
+      toast.error('Note content is required');
+      return;
+    }
+
+    try {
+      await updateNote.mutateAsync({
+        id: note.id,
+        title: editTitle.trim() || null,
+        content: editContent.trim(),
+      });
+      toast.success('Note updated');
+      setIsEditing(false);
+    } catch (error) {
+      toast.error('Failed to update note');
+    }
+  };
+
+  const handleCancel = () => {
+    setEditTitle(note.title || '');
+    setEditContent(note.content);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="p-4 bg-muted/50 border border-primary/50 rounded-lg space-y-3">
+        <Input
+          placeholder="Title (optional)"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+        />
+        <Textarea
+          placeholder="Write your note..."
+          value={editContent}
+          onChange={(e) => setEditContent(e.target.value)}
+          rows={4}
+        />
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={updateNote.isPending} size="sm" className="flex-1 gap-1">
+            <Check className="h-4 w-4" />
+            {updateNote.isPending ? 'Saving...' : 'Save'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCancel}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 bg-card border border-border rounded-lg space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -129,14 +186,24 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
             {format(new Date(note.created_at), 'MMM d, yyyy · h:mm a')}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          onClick={() => onDelete(note.id)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={() => setIsEditing(true)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={() => onDelete(note.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <p className="text-sm text-foreground whitespace-pre-wrap">{note.content}</p>
     </div>
