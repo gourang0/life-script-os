@@ -1,1 +1,7 @@
 project_id = "lcgsigoeywfigspxlymy"
+
+[functions.ai-motivation]
+verify_jwt = true
+
+[functions.generate-daily-summary]
+verify_jwt = false
