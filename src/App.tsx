@@ -9,8 +9,10 @@ import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Schedule from "./pages/Schedule";
 import Routines from "./pages/Routines";
+import Health from "./pages/Health";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -28,7 +30,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/routines" element={<Routines />} />
-            <Route path="/health" element={<Dashboard />} />
+            <Route path="/health" element={<Health />} />
             <Route path="/analytics" element={<Dashboard />} />
             <Route path="/exceptions" element={<Dashboard />} />
             <Route path="*" element={<NotFound />} />
