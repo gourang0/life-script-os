@@ -291,6 +291,48 @@ export type Database = {
         }
         Relationships: []
       }
+      meditation_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          guide_topic: string | null
+          id: string
+          is_guided: boolean
+          mood_after: string | null
+          mood_before: string | null
+          notes: string | null
+          session_date: string
+          session_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes: number
+          guide_topic?: string | null
+          id?: string
+          is_guided?: boolean
+          mood_after?: string | null
+          mood_before?: string | null
+          notes?: string | null
+          session_date?: string
+          session_type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          guide_topic?: string | null
+          id?: string
+          is_guided?: boolean
+          mood_after?: string | null
+          mood_before?: string | null
+          notes?: string | null
+          session_date?: string
+          session_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
@@ -488,6 +530,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schedule_templates: {
+        Row: {
+          created_at: string
+          days_of_week: number[]
+          end_time: string
+          id: string
+          is_active: boolean
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_of_week?: number[]
+          end_time: string
+          id?: string
+          is_active?: boolean
+          start_time: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days_of_week?: number[]
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          start_time?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       sleep_logs: {
         Row: {
