@@ -10,9 +10,10 @@ import {
   AlertCircle, 
   User,
   Menu,
-  X,
   Flame,
-  Zap
+  Zap,
+  Goal,
+  CheckSquare
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -26,7 +27,8 @@ interface AppLayoutProps {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/tasks', label: 'Tasks', icon: Target },
+  { path: '/goals', label: 'Goals', icon: Goal },
+  { path: '/tasks', label: 'Tasks', icon: CheckSquare },
   { path: '/schedule', label: 'Schedule', icon: Calendar },
   { path: '/routines', label: 'Routines', icon: RotateCcw },
   { path: '/health', label: 'Health', icon: Heart },
