@@ -252,6 +252,38 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_progress_history: {
+        Row: {
+          goal_id: string
+          id: string
+          progress_percentage: number
+          recorded_at: string
+          user_id: string
+        }
+        Insert: {
+          goal_id: string
+          id?: string
+          progress_percentage?: number
+          recorded_at?: string
+          user_id: string
+        }
+        Update: {
+          goal_id?: string
+          id?: string
+          progress_percentage?: number
+          recorded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_progress_history_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           category: string | null
@@ -338,6 +370,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          tags: string[] | null
           title: string | null
           updated_at: string
           user_id: string
@@ -346,6 +379,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          tags?: string[] | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -354,6 +388,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          tags?: string[] | null
           title?: string | null
           updated_at?: string
           user_id?: string

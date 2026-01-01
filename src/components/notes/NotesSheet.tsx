@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
-import { BookOpen, Plus, Trash2, X, Pencil, Check, Search, Filter } from 'lucide-react';
+import { BookOpen, Plus, Trash2, X, Pencil, Check, Search, Filter, Tag } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { useNotes, useCreateNote, useDeleteNote, useUpdateNote, Note } from '@/hooks/useNotes';
+import { Badge } from '@/components/ui/badge';
+import { useNotes, useCreateNote, useDeleteNote, useUpdateNote, Note, NOTE_TAG_COLORS, AVAILABLE_TAGS } from '@/hooks/useNotes';
 import { toast } from 'sonner';
 
 export function NotesSheet() {
@@ -16,7 +17,9 @@ export function NotesSheet() {
   const [isCreating, setIsCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterTag, setFilterTag] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   
@@ -31,22 +34,32 @@ export function NotesSheet() {
         note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         note.content.toLowerCase().includes(searchQuery.toLowerCase());
       
+      // Tag filter
+      const matchesTag = !filterTag || (note.tags && note.tags.includes(filterTag));
+      
       // Date filters
       const noteDate = parseISO(note.created_at);
       const matchesDateFrom = !dateFrom || isAfter(noteDate, startOfDay(dateFrom)) || noteDate.getTime() === startOfDay(dateFrom).getTime();
       const matchesDateTo = !dateTo || isBefore(noteDate, endOfDay(dateTo));
       
-      return matchesSearch && matchesDateFrom && matchesDateTo;
+      return matchesSearch && matchesTag && matchesDateFrom && matchesDateTo;
     });
-  }, [notes, searchQuery, dateFrom, dateTo]);
+  }, [notes, searchQuery, filterTag, dateFrom, dateTo]);
 
   const clearFilters = () => {
     setSearchQuery('');
+    setFilterTag(null);
     setDateFrom(undefined);
     setDateTo(undefined);
   };
 
-  const hasActiveFilters = searchQuery || dateFrom || dateTo;
+  const hasActiveFilters = searchQuery || filterTag || dateFrom || dateTo;
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
 
   const handleCreate = async () => {
     if (!content.trim()) {
@@ -55,10 +68,15 @@ export function NotesSheet() {
     }
 
     try {
-      await createNote.mutateAsync({ title: title.trim() || undefined, content: content.trim() });
+      await createNote.mutateAsync({ 
+        title: title.trim() || undefined, 
+        content: content.trim(),
+        tags: selectedTags,
+      });
       toast.success('Note created');
       setTitle('');
       setContent('');
+      setSelectedTags([]);
       setIsCreating(false);
     } catch (error) {
       toast.error('Failed to create note');
@@ -107,6 +125,21 @@ export function NotesSheet() {
                 className="pl-9"
               />
             </div>
+            
+            {/* Tag Filter */}
+            <div className="flex flex-wrap gap-1">
+              {AVAILABLE_TAGS.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className={`cursor-pointer text-xs capitalize ${filterTag === tag ? NOTE_TAG_COLORS[tag] : 'opacity-50 hover:opacity-100'}`}
+                  onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
@@ -160,11 +193,29 @@ export function NotesSheet() {
                 onChange={(e) => setContent(e.target.value)}
                 rows={4}
               />
+              {/* Tag Selection */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Tag className="h-3 w-3" /> Tags
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {AVAILABLE_TAGS.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="outline"
+                      className={`cursor-pointer text-xs capitalize ${selectedTags.includes(tag) ? NOTE_TAG_COLORS[tag] : 'opacity-50 hover:opacity-100'}`}
+                      onClick={() => toggleTag(tag)}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <Button onClick={handleCreate} disabled={createNote.isPending} className="flex-1">
                   {createNote.isPending ? 'Saving...' : 'Save Note'}
                 </Button>
-                <Button variant="outline" onClick={() => setIsCreating(false)}>
+                <Button variant="outline" onClick={() => { setIsCreating(false); setSelectedTags([]); }}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -176,7 +227,7 @@ export function NotesSheet() {
             </Button>
           )}
 
-          <ScrollArea className="h-[calc(100vh-350px)]">
+          <ScrollArea className="h-[calc(100vh-420px)]">
             <div className="space-y-3 pr-4">
               {isLoading ? (
                 <div className="text-center text-muted-foreground py-8">Loading notes...</div>
@@ -202,7 +253,14 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(note.title || '');
   const [editContent, setEditContent] = useState(note.content);
+  const [editTags, setEditTags] = useState<string[]>(note.tags || []);
   const updateNote = useUpdateNote();
+
+  const toggleEditTag = (tag: string) => {
+    setEditTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
 
   const handleSave = async () => {
     if (!editContent.trim()) {
@@ -215,6 +273,7 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
         id: note.id,
         title: editTitle.trim() || null,
         content: editContent.trim(),
+        tags: editTags,
       });
       toast.success('Note updated');
       setIsEditing(false);
@@ -226,6 +285,7 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
   const handleCancel = () => {
     setEditTitle(note.title || '');
     setEditContent(note.content);
+    setEditTags(note.tags || []);
     setIsEditing(false);
   };
 
@@ -243,6 +303,18 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
           onChange={(e) => setEditContent(e.target.value)}
           rows={4}
         />
+        <div className="flex flex-wrap gap-1">
+          {AVAILABLE_TAGS.map((tag) => (
+            <Badge
+              key={tag}
+              variant="outline"
+              className={`cursor-pointer text-xs capitalize ${editTags.includes(tag) ? NOTE_TAG_COLORS[tag] : 'opacity-50 hover:opacity-100'}`}
+              onClick={() => toggleEditTag(tag)}
+            >
+              {tag}
+            </Badge>
+          ))}
+        </div>
         <div className="flex gap-2">
           <Button onClick={handleSave} disabled={updateNote.isPending} size="sm" className="flex-1 gap-1">
             <Check className="h-4 w-4" />
@@ -286,6 +358,15 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
           </Button>
         </div>
       </div>
+      {note.tags && note.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {note.tags.map((tag) => (
+            <Badge key={tag} variant="outline" className={`text-xs capitalize ${NOTE_TAG_COLORS[tag] || ''}`}>
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
       <p className="text-sm text-foreground whitespace-pre-wrap">{note.content}</p>
     </div>
   );

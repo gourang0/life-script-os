@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useGoals } from '@/hooks/useGoals';
 import { GoalCard } from '@/components/goals/GoalCard';
+import { GoalProgressChart } from '@/components/goals/GoalProgressChart';
 import { CreateGoalDialog } from '@/components/goals/CreateGoalDialog';
 import { DailyTracker } from '@/components/goals/DailyTracker';
 import { GoalTargets } from '@/components/goals/GoalTargets';
@@ -11,7 +12,7 @@ import { WeeklyTimetable } from '@/components/schedule/WeeklyTimetable';
 import { DailySpecialDialog } from '@/components/schedule/DailySpecialDialog';
 import { DateSelector } from '@/components/schedule/DateSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, Loader2, CalendarCheck } from 'lucide-react';
+import { Target, Loader2, CalendarCheck, TrendingUp } from 'lucide-react';
 
 export default function Goals() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -50,6 +51,10 @@ export default function Goals() {
               Timetable
             </TabsTrigger>
             <TabsTrigger value="goals">Long-term Goals</TabsTrigger>
+            <TabsTrigger value="progress">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              Progress
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="daily" className="space-y-4 mt-4">
@@ -105,6 +110,26 @@ export default function Goals() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="progress" className="mt-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : activeGoals.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="mb-2">No active goals to track</p>
+                <p className="text-sm">Create a goal and update its progress to see charts</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeGoals.map((goal) => (
+                  <GoalProgressChart key={goal.id} goalId={goal.id} goalTitle={goal.title} />
+                ))}
               </div>
             )}
           </TabsContent>
