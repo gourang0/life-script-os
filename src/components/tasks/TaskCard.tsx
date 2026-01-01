@@ -9,7 +9,9 @@ import {
   Zap, 
   Trash2, 
   Edit,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  PartyPopper
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,11 +35,12 @@ export function TaskCard({ task, onEdit, onLogException }: TaskCardProps) {
   const deleteTask = useDeleteTask();
   const addXP = useAddXP();
   const [completing, setCompleting] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const priorityColors = {
     low: 'bg-chart-3/20 text-chart-3 border-chart-3/30',
     medium: 'bg-chart-2/20 text-chart-2 border-chart-2/30',
-    high: 'bg-destructive/20 text-destructive border-destructive/30'
+    high: 'bg-destructive/20 text-destructive border-destructive/30 animate-pulse'
   };
 
   const handleComplete = async () => {
@@ -47,6 +50,9 @@ export function TaskCard({ task, onEdit, onLogException }: TaskCardProps) {
     try {
       await completeTask.mutateAsync(task.id);
       const { leveledUp } = await addXP.mutateAsync(task.xp_reward);
+      
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 1500);
       
       toast({
         title: `+${task.xp_reward} XP! 🎉`,
@@ -82,24 +88,58 @@ export function TaskCard({ task, onEdit, onLogException }: TaskCardProps) {
   };
 
   return (
-    <Card className={cn(
-      "transition-all duration-300 hover:shadow-md",
-      task.is_completed && "opacity-60 bg-muted/30"
-    )}>
-      <CardContent className="p-4">
+    <Card 
+      variant={task.is_completed ? "default" : "interactive"}
+      className={cn(
+        "relative overflow-hidden transition-all duration-300",
+        task.is_completed && "opacity-60 bg-muted/30",
+        showCelebration && "animate-bounce-in border-primary glow-md"
+      )}
+    >
+      {/* XP glow effect on completion */}
+      {showCelebration && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-chart-2/20 to-chart-3/20 animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
+          {[...Array(6)].map((_, i) => (
+            <PartyPopper
+              key={i}
+              className="absolute text-yellow-500 animate-confetti h-4 w-4"
+              style={{
+                left: `${20 + Math.random() * 60}%`,
+                top: '50%',
+                animationDelay: `${i * 0.1}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Priority indicator bar */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1 transition-all",
+        task.priority === 'high' && "bg-destructive",
+        task.priority === 'medium' && "bg-chart-2",
+        task.priority === 'low' && "bg-chart-3",
+      )} />
+
+      <CardContent className="p-4 pl-5">
         <div className="flex items-start gap-4">
           <Checkbox
+            variant="animated"
             checked={task.is_completed}
             onCheckedChange={handleComplete}
             disabled={completing || task.is_completed}
-            className="mt-1"
+            className={cn(
+              "mt-1 transition-all",
+              completing && "animate-pulse"
+            )}
           />
           
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1">
                 <h3 className={cn(
-                  "font-medium text-foreground",
+                  "font-medium text-foreground transition-all duration-300",
                   task.is_completed && "line-through text-muted-foreground"
                 )}>
                   {task.title}
@@ -113,26 +153,26 @@ export function TaskCard({ task, onEdit, onLogException }: TaskCardProps) {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 hover:bg-primary/10 transition-colors">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-popover border shadow-lg">
                   {onEdit && (
-                    <DropdownMenuItem onClick={() => onEdit(task)}>
+                    <DropdownMenuItem onClick={() => onEdit(task)} className="cursor-pointer">
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
                   )}
                   {!task.is_completed && onLogException && (
-                    <DropdownMenuItem onClick={() => onLogException(task)}>
+                    <DropdownMenuItem onClick={() => onLogException(task)} className="cursor-pointer">
                       <AlertCircle className="w-4 h-4 mr-2" />
                       Log Exception
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem 
                     onClick={handleDelete}
-                    className="text-destructive focus:text-destructive"
+                    className="text-destructive focus:text-destructive cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete
@@ -142,7 +182,7 @@ export function TaskCard({ task, onEdit, onLogException }: TaskCardProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Badge variant="outline" className={priorityColors[task.priority]}>
+              <Badge variant="outline" className={cn(priorityColors[task.priority], "capitalize")}>
                 {task.priority}
               </Badge>
               
@@ -153,7 +193,7 @@ export function TaskCard({ task, onEdit, onLogException }: TaskCardProps) {
                 </Badge>
               )}
               
-              <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/30">
+              <Badge variant="glow" className="gap-1">
                 <Zap className="w-3 h-3" />
                 {task.xp_reward} XP
               </Badge>
