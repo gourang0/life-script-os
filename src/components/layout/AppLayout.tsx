@@ -24,6 +24,7 @@ import { useStreakRestoreEligibility, useRestoreStreakFreeze } from '@/hooks/use
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 
 interface AppLayoutProps {
@@ -62,6 +63,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar backdrop */}
@@ -80,13 +86,22 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-border">
-            <Link to="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent-foreground flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary-foreground" />
+          {/* User Profile Header */}
+          <div className="p-4 border-b border-border">
+            <Link to="/profile" className="flex items-center gap-3 group">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all">
+                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.display_name || 'User'} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-chart-2 text-primary-foreground font-bold">
+                  {getInitials(profile?.display_name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {profile?.display_name || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground">Level {profile?.level || 1}</p>
               </div>
-              <span className="text-xl font-bold text-foreground">KARTAVYA</span>
+              <ThemeToggle />
             </Link>
           </div>
 
@@ -95,17 +110,17 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">Level {profile.level}</span>
+                  <Zap className="w-4 h-4 text-primary" />
                   <span className="text-xs text-muted-foreground">
                     {currentLevelXP}/{xpForNextLevel} XP
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-accent-foreground">
-                  <Flame className="w-4 h-4" />
+                  <Flame className="w-4 h-4 text-orange-500" />
                   <span className="text-sm font-bold">{profile.current_streak}</span>
                 </div>
               </div>
-              <Progress value={xpProgress} className="h-2" />
+              <Progress value={xpProgress} variant="gradient" className="h-2" />
             </div>
           )}
 
@@ -121,8 +136,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-lg"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-primary text-primary-foreground shadow-lg glow-sm"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground hover:-translate-x-1"
                   )}
                 >
                   <item.icon className="w-5 h-5" />
@@ -137,7 +152,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="p-4 border-t border-border space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
-                  <Snowflake className="h-4 w-4" />
+                  <Snowflake className="h-4 w-4 text-blue-400" />
                   Streak Freezes
                 </span>
                 <span className="font-bold text-primary">{profile.streak_freeze_count}/3</span>
@@ -146,7 +161,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  className="w-full gap-1 text-xs"
+                  className="w-full gap-1 text-xs hover:bg-primary/10 hover:border-primary"
                   onClick={handleRestoreFreeze}
                   disabled={restoreFreeze.isPending}
                 >
@@ -166,8 +181,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           {profile && (
             <div className="p-4 border-t border-border">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Total XP</span>
-                <span className="font-bold text-primary">{profile.xp_points.toLocaleString()}</span>
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                  Total XP
+                </span>
+                <span className="font-bold gradient-text">{profile.xp_points.toLocaleString()}</span>
               </div>
             </div>
           )}
@@ -177,7 +195,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Mobile header */}
-        <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card">
+        <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card/80 backdrop-blur-sm">
           <Button
             variant="ghost"
             size="icon"
@@ -185,21 +203,29 @@ export function AppLayout({ children }: AppLayoutProps) {
           >
             <Menu className="w-6 h-6" />
           </Button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent-foreground flex items-center justify-center">
-              <Zap className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-foreground">KARTAVYA</span>
-          </div>
+          
+          {/* User profile in mobile header */}
           {profile && (
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
+            <Link to="/profile" className="flex items-center gap-2">
+              <Avatar className="h-8 w-8 ring-2 ring-primary/20">
+                <AvatarImage src={profile.avatar_url || ''} alt={profile.display_name || 'User'} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-chart-2 text-primary-foreground text-xs font-bold">
+                  {getInitials(profile.display_name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-sm">{profile.display_name || 'User'}</span>
+            </Link>
+          )}
+          
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {profile && (
               <div className="flex items-center gap-1 text-accent-foreground">
-                <Flame className="w-4 h-4" />
+                <Flame className="w-4 h-4 text-orange-500" />
                 <span className="text-sm font-bold">{profile.current_streak}</span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         {/* Page content */}
