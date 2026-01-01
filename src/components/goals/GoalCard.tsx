@@ -6,9 +6,10 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Goal, useUpdateGoal, useDeleteGoal } from '@/hooks/useGoals';
+import { useRecordGoalProgress } from '@/hooks/useGoalProgressHistory';
 import { CreateGoalDialog } from './CreateGoalDialog';
 import { toast } from 'sonner';
-import { Target, Calendar, Trash2, Edit, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Target, Calendar, Trash2, Edit, CheckCircle } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { useState } from 'react';
 
@@ -32,6 +33,7 @@ export function GoalCard({ goal }: GoalCardProps) {
   const [reason, setReason] = useState('');
   const updateGoal = useUpdateGoal();
   const deleteGoal = useDeleteGoal();
+  const recordProgress = useRecordGoalProgress();
 
   const daysRemaining = goal.target_date 
     ? differenceInDays(parseISO(goal.target_date), new Date())
@@ -49,6 +51,10 @@ export function GoalCard({ goal }: GoalCardProps) {
         progress_percentage: progress,
         is_completed: progress >= 100,
       });
+      
+      // Record progress history
+      await recordProgress.mutateAsync({ goalId: goal.id, progress });
+      
       if (progress >= 100) {
         toast.success('Congratulations! Goal completed! 🎉');
       }

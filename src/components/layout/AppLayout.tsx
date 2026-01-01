@@ -13,13 +13,18 @@ import {
   Flame,
   Zap,
   Goal,
-  CheckSquare
+  CheckSquare,
+  Snowflake,
+  Gift
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
+import { useStreakRestoreEligibility, useRestoreStreakFreeze } from '@/hooks/useStreakRestore';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { toast } from 'sonner';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -41,10 +46,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { data: profile } = useProfile();
+  const { data: restoreEligibility } = useStreakRestoreEligibility();
+  const restoreFreeze = useRestoreStreakFreeze();
 
   const xpForNextLevel = 100;
   const currentLevelXP = profile ? profile.xp_points % xpForNextLevel : 0;
   const xpProgress = (currentLevelXP / xpForNextLevel) * 100;
+
+  const handleRestoreFreeze = async () => {
+    try {
+      await restoreFreeze.mutateAsync();
+      toast.success('Streak freeze restored! 🎉');
+    } catch (error) {
+      toast.error('Failed to restore streak freeze');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -116,6 +132,36 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
           </nav>
 
+          {/* Streak Freezes & Restore */}
+          {profile && (
+            <div className="p-4 border-t border-border space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Snowflake className="h-4 w-4" />
+                  Streak Freezes
+                </span>
+                <span className="font-bold text-primary">{profile.streak_freeze_count}/3</span>
+              </div>
+              {restoreEligibility?.canRestore && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full gap-1 text-xs"
+                  onClick={handleRestoreFreeze}
+                  disabled={restoreFreeze.isPending}
+                >
+                  <Gift className="h-3 w-3" />
+                  Restore Freeze (5 days worked!)
+                </Button>
+              )}
+              {!restoreEligibility?.atMax && !restoreEligibility?.canRestore && (
+                <p className="text-xs text-muted-foreground">
+                  Work {5 - (restoreEligibility?.consecutiveDays || 0)} more days to earn a freeze
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Total XP */}
           {profile && (
             <div className="p-4 border-t border-border">
@@ -146,9 +192,12 @@ export function AppLayout({ children }: AppLayoutProps) {
             <span className="font-bold text-foreground">KARTAVYA</span>
           </div>
           {profile && (
-            <div className="flex items-center gap-1 text-accent-foreground">
-              <Flame className="w-4 h-4" />
-              <span className="text-sm font-bold">{profile.current_streak}</span>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <div className="flex items-center gap-1 text-accent-foreground">
+                <Flame className="w-4 h-4" />
+                <span className="text-sm font-bold">{profile.current_streak}</span>
+              </div>
             </div>
           )}
         </header>

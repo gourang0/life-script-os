@@ -7,9 +7,23 @@ export interface Note {
   user_id: string;
   title: string | null;
   content: string;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
+
+export const NOTE_TAG_COLORS: Record<string, string> = {
+  work: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+  personal: 'bg-green-500/20 text-green-600 dark:text-green-400',
+  ideas: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400',
+  important: 'bg-red-500/20 text-red-600 dark:text-red-400',
+  learning: 'bg-purple-500/20 text-purple-600 dark:text-purple-400',
+  health: 'bg-pink-500/20 text-pink-600 dark:text-pink-400',
+  finance: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+  reminder: 'bg-orange-500/20 text-orange-600 dark:text-orange-400',
+};
+
+export const AVAILABLE_TAGS = Object.keys(NOTE_TAG_COLORS);
 
 export function useNotes() {
   const { user } = useAuth();
@@ -36,11 +50,11 @@ export function useCreateNote() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (note: { title?: string; content: string }) => {
+    mutationFn: async (note: { title?: string; content: string; tags?: string[] }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
         .from('notes')
-        .insert({ ...note, user_id: user.id })
+        .insert({ ...note, user_id: user.id, tags: note.tags || [] })
         .select()
         .single();
       
