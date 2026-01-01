@@ -39,13 +39,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, displayName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
+    // Sanitize display name - remove HTML tags, trim, and limit length
+    const sanitizeDisplayName = (name: string): string => {
+      return name
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/[<>"'&]/g, '') // Remove potentially dangerous characters
+        .trim()
+        .slice(0, 100); // Limit length
+    };
+    
+    const rawDisplayName = displayName || email.split('@')[0];
+    const sanitizedDisplayName = sanitizeDisplayName(rawDisplayName);
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          display_name: displayName || email.split('@')[0]
+          display_name: sanitizedDisplayName
         }
       }
     });
