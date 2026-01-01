@@ -5,6 +5,7 @@ import { GoalDeadlineNotifications } from "@/components/goals/GoalDeadlineNotifi
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
@@ -30,15 +31,15 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/schedule" element={<Schedule />} />
-            <Route path="/routines" element={<Routines />} />
-            <Route path="/health" element={<Health />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/exceptions" element={<Exceptions />} />
-            <Route path="/goals" element={<Goals />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+            <Route path="/routines" element={<ProtectedRoute><Routines /></ProtectedRoute>} />
+            <Route path="/health" element={<ProtectedRoute><Health /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/exceptions" element={<ProtectedRoute><Exceptions /></ProtectedRoute>} />
+            <Route path="/goals" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
