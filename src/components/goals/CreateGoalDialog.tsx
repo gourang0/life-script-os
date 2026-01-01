@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreateGoal, useUpdateGoal, Goal } from '@/hooks/useGoals';
 import { toast } from 'sonner';
 import { Plus, Target } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, addYears } from 'date-fns';
 
 const CATEGORIES = [
   { value: 'health', label: 'Health & Fitness' },
@@ -18,6 +18,13 @@ const CATEGORIES = [
   { value: 'relationships', label: 'Relationships' },
   { value: 'lifestyle', label: 'Lifestyle' },
   { value: 'other', label: 'Other' },
+];
+
+const TIMEFRAMES = [
+  { value: 'monthly', label: 'Monthly Goal', months: 1 },
+  { value: 'quarterly', label: 'Quarterly Goal', months: 3 },
+  { value: 'half-yearly', label: 'Half-Yearly Goal', months: 6 },
+  { value: 'yearly', label: 'Yearly Goal', months: 12 },
 ];
 
 interface CreateGoalDialogProps {
@@ -30,6 +37,7 @@ export function CreateGoalDialog({ goal, trigger }: CreateGoalDialogProps) {
   const [title, setTitle] = useState(goal?.title || '');
   const [description, setDescription] = useState(goal?.description || '');
   const [category, setCategory] = useState(goal?.category || '');
+  const [timeframe, setTimeframe] = useState('quarterly');
   const [targetDate, setTargetDate] = useState(
     goal?.target_date || format(addMonths(new Date(), 3), 'yyyy-MM-dd')
   );
@@ -37,6 +45,16 @@ export function CreateGoalDialog({ goal, trigger }: CreateGoalDialogProps) {
   const createGoal = useCreateGoal();
   const updateGoal = useUpdateGoal();
   const isEditing = !!goal;
+
+  // Auto-set target date based on timeframe selection
+  useEffect(() => {
+    if (!isEditing) {
+      const selectedTimeframe = TIMEFRAMES.find(t => t.value === timeframe);
+      if (selectedTimeframe) {
+        setTargetDate(format(addMonths(new Date(), selectedTimeframe.months), 'yyyy-MM-dd'));
+      }
+    }
+  }, [timeframe, isEditing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +95,7 @@ export function CreateGoalDialog({ goal, trigger }: CreateGoalDialogProps) {
       setTitle('');
       setDescription('');
       setCategory('');
+      setTimeframe('quarterly');
       setTargetDate(format(addMonths(new Date(), 3), 'yyyy-MM-dd'));
     }
   };
@@ -120,20 +139,38 @@ export function CreateGoalDialog({ goal, trigger }: CreateGoalDialogProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Timeframe</Label>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEFRAMES.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">

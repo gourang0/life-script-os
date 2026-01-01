@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Goal, useUpdateGoal, useDeleteGoal } from '@/hooks/useGoals';
 import { CreateGoalDialog } from './CreateGoalDialog';
 import { toast } from 'sonner';
-import { Target, Calendar, Trash2, Edit, CheckCircle } from 'lucide-react';
+import { Target, Calendar, Trash2, Edit, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { useState } from 'react';
 
@@ -26,6 +28,8 @@ interface GoalCardProps {
 
 export function GoalCard({ goal }: GoalCardProps) {
   const [progress, setProgress] = useState(goal.progress_percentage);
+  const [showReason, setShowReason] = useState(false);
+  const [reason, setReason] = useState('');
   const updateGoal = useUpdateGoal();
   const deleteGoal = useDeleteGoal();
 
@@ -53,6 +57,33 @@ export function GoalCard({ goal }: GoalCardProps) {
     }
   };
 
+  const handleCompletionToggle = async (checked: boolean) => {
+    if (checked && !reason.trim()) {
+      setShowReason(true);
+      return;
+    }
+    
+    try {
+      await updateGoal.mutateAsync({
+        id: goal.id,
+        is_completed: checked,
+        progress_percentage: checked ? 100 : progress,
+        description: checked && reason.trim() 
+          ? `${goal.description || ''}\n\n✅ Achievement Note: ${reason.trim()}`
+          : goal.description,
+      });
+      toast.success(checked ? 'Goal marked as achieved! 🎉' : 'Goal unmarked');
+      setShowReason(false);
+      setReason('');
+    } catch (error) {
+      toast.error('Failed to update goal');
+    }
+  };
+
+  const handleSaveReason = async () => {
+    await handleCompletionToggle(true);
+  };
+
   const handleDelete = async () => {
     try {
       await deleteGoal.mutateAsync(goal.id);
@@ -67,12 +98,12 @@ export function GoalCard({ goal }: GoalCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3">
-            <div className={`p-2 rounded-lg ${goal.is_completed ? 'bg-primary/10' : 'bg-muted'}`}>
-              {goal.is_completed ? (
-                <CheckCircle className="h-4 w-4 text-primary" />
-              ) : (
-                <Target className="h-4 w-4 text-muted-foreground" />
-              )}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={goal.is_completed}
+                onCheckedChange={handleCompletionToggle}
+                className="h-5 w-5"
+              />
             </div>
             <div className="space-y-1">
               <CardTitle className={`text-base ${goal.is_completed ? 'line-through text-muted-foreground' : ''}`}>
@@ -106,8 +137,28 @@ export function GoalCard({ goal }: GoalCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {showReason && (
+          <div className="space-y-2 p-3 bg-muted/50 rounded-lg border border-border">
+            <p className="text-sm font-medium">Why did you achieve this goal?</p>
+            <Textarea
+              placeholder="Describe what helped you succeed..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSaveReason} disabled={!reason.trim()}>
+                Mark Complete
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowReason(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
         {goal.description && (
-          <p className="text-sm text-muted-foreground">{goal.description}</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{goal.description}</p>
         )}
 
         {goal.target_date && (
