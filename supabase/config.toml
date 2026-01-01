@@ -1,10 +1,10 @@
 project_id = "lcgsigoeywfigspxlymy"
 
 [functions.ai-motivation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-daily-summary]
-verify_jwt = false
+verify_jwt = true
 
 [functions.streak-freeze-feedback]
 verify_jwt = true
