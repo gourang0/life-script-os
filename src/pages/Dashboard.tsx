@@ -8,12 +8,12 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
 import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
 import { AIMotivation } from '@/components/dashboard/AIMotivation';
+import { UrgentGoalCountdown } from '@/components/dashboard/UrgentGoalCountdown';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Target, CheckCircle, Clock, Flame, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -56,13 +56,16 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1">
-            <CardHeader><CardTitle>Your Progress</CardTitle></CardHeader>
-            <CardContent className="flex flex-col items-center gap-6">
-              <XPProgressRing level={profile?.level || 1} currentXP={(profile?.xp_points || 0) % 100} xpForNextLevel={100} size="lg" />
-              <StreakDisplay currentStreak={profile?.current_streak || 0} bestStreak={profile?.best_streak || 0} />
-            </CardContent>
-          </Card>
+          <div className="lg:col-span-1 space-y-4">
+            <UrgentGoalCountdown />
+            <Card>
+              <CardHeader><CardTitle>Your Progress</CardTitle></CardHeader>
+              <CardContent className="flex flex-col items-center gap-6">
+                <XPProgressRing level={profile?.level || 1} currentXP={(profile?.xp_points || 0) % 100} xpForNextLevel={100} size="lg" />
+                <StreakDisplay currentStreak={profile?.current_streak || 0} bestStreak={profile?.best_streak || 0} />
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="lg:col-span-2 space-y-4">
             <AIMotivation />

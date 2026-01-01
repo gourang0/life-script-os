@@ -6,6 +6,7 @@ import { useUserBadges, useBadges } from '@/hooks/useBadges';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
 import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
+import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,9 +41,7 @@ export default function Profile() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-1">
             <CardContent className="pt-6 flex flex-col items-center gap-4">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent-foreground flex items-center justify-center text-4xl">
-                {profile?.display_name?.[0]?.toUpperCase() || '?'}
-              </div>
+              <AvatarPicker />
               <div className="text-center">
                 <h2 className="text-xl font-bold text-foreground">{profile?.display_name || 'User'}</h2>
                 <p className="text-muted-foreground">{user?.email}</p>
