@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Utensils, Sparkles, Loader2, AlertCircle, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Utensils, Loader2, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -33,119 +32,117 @@ const mealTypes = [
   { value: 'snack', label: 'Snack', icon: '🍎' },
 ];
 
+interface NutrientData {
+  calories: number;
+  protein_grams: number;
+  carbs_grams: number;
+  fats_grams: number;
+  fiber_grams: number;
+  sugar_grams: number;
+  sodium_mg: number;
+  saturated_fat_grams: number;
+  vitamin_a_iu: number;
+  vitamin_c_mg: number;
+  calcium_mg: number;
+  iron_mg: number;
+}
+
 export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
   const [open, setOpen] = useState(false);
   const [mealType, setMealType] = useState<string>('breakfast');
-  const [foodItems, setFoodItems] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [foodName, setFoodName] = useState('');
   const [quantity, setQuantity] = useState('100');
-  const [calories, setCalories] = useState('');
-  const [protein, setProtein] = useState('');
-  const [carbs, setCarbs] = useState('');
-  const [fats, setFats] = useState('');
-  const [fiber, setFiber] = useState('');
-  const [sugar, setSugar] = useState('');
-  const [sodium, setSodium] = useState('');
   const [notes, setNotes] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [foundProduct, setFoundProduct] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nutrients, setNutrients] = useState<NutrientData | null>(null);
+  const [productName, setProductName] = useState<string | null>(null);
 
   const createLog = useCreateNutritionLog();
 
-  const searchFoodDatabase = async () => {
-    if (!searchQuery.trim()) {
-      toast.error('Please enter a food to search');
+  // Auto-search when food name or quantity changes (with debounce)
+  useEffect(() => {
+    if (!foodName.trim()) {
+      setNutrients(null);
+      setProductName(null);
+      setError(null);
       return;
     }
 
-    setIsSearching(true);
-    setAnalysisError(null);
-    setFoundProduct(null);
+    const timer = setTimeout(() => {
+      lookupNutrition();
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [foodName, quantity]);
+
+  const lookupNutrition = async () => {
+    if (!foodName.trim()) return;
+
+    setIsLoading(true);
+    setError(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('lookup-nutrition', {
-        body: { query: searchQuery.trim(), quantity: parseInt(quantity) || 100 }
+      // First try the food database
+      const { data: dbData, error: dbError } = await supabase.functions.invoke('lookup-nutrition', {
+        body: { query: foodName.trim(), quantity: parseInt(quantity) || 100 }
       });
 
-      if (error) throw error;
-
-      if (!data.found) {
-        setAnalysisError(data.message || 'No food found. Try "Calculate with AI" instead.');
-        toast.error('No food found');
+      if (!dbError && dbData?.found) {
+        setNutrients(dbData.nutrients);
+        setProductName(dbData.product_name);
         return;
       }
 
-      // Populate fields with found data
-      setFoodItems(data.product_name + (data.brand ? ` (${data.brand})` : ''));
-      setFoundProduct(data.product_name);
-      
-      const n = data.nutrients;
-      if (n.calories) setCalories(String(n.calories));
-      if (n.protein_grams) setProtein(String(n.protein_grams));
-      if (n.carbs_grams) setCarbs(String(n.carbs_grams));
-      if (n.fats_grams) setFats(String(n.fats_grams));
-      if (n.fiber_grams) setFiber(String(n.fiber_grams));
-      if (n.sugar_grams) setSugar(String(n.sugar_grams));
-      if (n.sodium_mg) setSodium(String(n.sodium_mg));
-
-      toast.success(`Found: ${data.product_name}`);
-    } catch (error) {
-      console.error('Failed to search food:', error);
-      setAnalysisError('Search failed. Try "Calculate with AI" instead.');
-      toast.error('Failed to search food database');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const analyzeWithAI = async () => {
-    if (!foodItems.trim()) {
-      toast.error('Please enter food items first');
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-    setAiAnalysis(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('analyze-nutrition', {
-        body: { foodItems: foodItems.trim() }
+      // If not found in database, use AI
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('analyze-nutrition', {
+        body: { foodItems: `${quantity}g of ${foodName.trim()}` }
       });
 
-      if (error) throw error;
+      if (aiError) throw aiError;
 
-      if (!data.identified) {
-        setAnalysisError('No food identified. Please enter valid food items.');
-        toast.error('No food identified');
+      if (!aiData.identified) {
+        setError('No food identified. Please check the food name.');
+        setNutrients(null);
+        setProductName(null);
         return;
       }
 
-      if (data.calories) setCalories(String(Math.round(data.calories)));
-      if (data.protein_grams) setProtein(String(Math.round(data.protein_grams * 10) / 10));
-      if (data.carbs_grams) setCarbs(String(Math.round(data.carbs_grams * 10) / 10));
-      if (data.fats_grams) setFats(String(Math.round(data.fats_grams * 10) / 10));
-      if (data.fiber_grams) setFiber(String(Math.round(data.fiber_grams * 10) / 10));
-      if (data.analysis) setAiAnalysis(data.analysis);
-
-      toast.success('Nutrition calculated!');
-    } catch (error) {
-      console.error('Failed to analyze nutrition:', error);
-      setAnalysisError('Failed to analyze. Please try again or enter values manually.');
-      toast.error('Failed to analyze nutrition');
+      setNutrients({
+        calories: Math.round(aiData.calories || 0),
+        protein_grams: Math.round((aiData.protein_grams || 0) * 10) / 10,
+        carbs_grams: Math.round((aiData.carbs_grams || 0) * 10) / 10,
+        fats_grams: Math.round((aiData.fats_grams || 0) * 10) / 10,
+        fiber_grams: Math.round((aiData.fiber_grams || 0) * 10) / 10,
+        sugar_grams: 0,
+        sodium_mg: 0,
+        saturated_fat_grams: 0,
+        vitamin_a_iu: 0,
+        vitamin_c_mg: 0,
+        calcium_mg: 0,
+        iron_mg: 0,
+      });
+      setProductName(foodName.trim());
+    } catch (err) {
+      console.error('Failed to lookup nutrition:', err);
+      setError('Failed to find nutrition data. Please try again.');
+      setNutrients(null);
+      setProductName(null);
     } finally {
-      setIsAnalyzing(false);
+      setIsLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!foodItems.trim()) {
-      toast.error('Please enter food items');
+    if (!foodName.trim()) {
+      toast.error('Please enter a food name');
+      return;
+    }
+
+    if (!nutrients) {
+      toast.error('Please wait for nutrition data to load');
       return;
     }
 
@@ -153,12 +150,12 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
       await createLog.mutateAsync({
         log_date: selectedDate,
         meal_type: mealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-        food_items: foodItems.trim(),
-        calories: calories ? parseInt(calories) : null,
-        protein_grams: protein ? parseFloat(protein) : null,
-        carbs_grams: carbs ? parseFloat(carbs) : null,
-        fats_grams: fats ? parseFloat(fats) : null,
-        fiber_grams: fiber ? parseFloat(fiber) : null,
+        food_items: productName || foodName.trim(),
+        calories: nutrients.calories,
+        protein_grams: nutrients.protein_grams,
+        carbs_grams: nutrients.carbs_grams,
+        fats_grams: nutrients.fats_grams,
+        fiber_grams: nutrients.fiber_grams,
         notes: notes.trim() || null,
       });
       
@@ -172,20 +169,12 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
 
   const resetForm = () => {
     setMealType('breakfast');
-    setFoodItems('');
-    setSearchQuery('');
+    setFoodName('');
     setQuantity('100');
-    setCalories('');
-    setProtein('');
-    setCarbs('');
-    setFats('');
-    setFiber('');
-    setSugar('');
-    setSodium('');
     setNotes('');
-    setAnalysisError(null);
-    setAiAnalysis(null);
-    setFoundProduct(null);
+    setError(null);
+    setNutrients(null);
+    setProductName(null);
   };
 
   return (
@@ -220,193 +209,113 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
             </Select>
           </div>
 
-          {/* Food Database Search */}
-          <div className="space-y-2 p-3 bg-muted/50 rounded-lg border border-border">
-            <Label className="flex items-center gap-2 text-sm font-medium">
+          {/* Food Entry */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
               <Search className="w-4 h-4" />
-              Search Food Database
+              Food Name
             </Label>
             <div className="flex gap-2">
               <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="e.g., chicken breast, apple..."
+                value={foodName}
+                onChange={(e) => setFoodName(e.target.value)}
+                placeholder="e.g., chicken breast, apple, rice..."
                 className="flex-1"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchFoodDatabase())}
               />
-              <Input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="g"
-                className="w-20"
-                min="1"
-              />
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="w-20"
+                  min="1"
+                />
+                <span className="text-sm text-muted-foreground">g</span>
+              </div>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="w-full gap-2"
-              onClick={searchFoodDatabase}
-              disabled={isSearching || !searchQuery.trim()}
-            >
-              {isSearching ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  Search & Auto-Fill ({quantity}g)
-                </>
-              )}
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Enter food name and quantity - nutrition is calculated automatically
+            </p>
           </div>
 
-          {foundProduct && (
-            <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600 dark:text-green-400">
-              ✓ Found: {foundProduct} - nutrients auto-filled!
+          {isLoading && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Calculating nutrition...
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="foodItems">Food Items</Label>
-            <Textarea
-              id="foodItems"
-              value={foodItems}
-              onChange={(e) => {
-                setFoodItems(e.target.value);
-                setAnalysisError(null);
-              }}
-              placeholder="e.g., 2 eggs, toast, orange juice..."
-              rows={2}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full gap-2"
-              onClick={analyzeWithAI}
-              disabled={isAnalyzing || !foodItems.trim()}
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Calculate with AI
-                </>
-              )}
-            </Button>
-          </div>
-
-          {analysisError && (
+          {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {analysisError}
+              {error}
             </div>
           )}
 
-          {aiAnalysis && (
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-foreground">
-              <div className="flex items-center gap-2 mb-1 font-medium">
-                <Sparkles className="w-4 h-4 text-primary" />
-                AI Analysis
+          {nutrients && productName && (
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-foreground">{productName}</span>
+                <span className="text-sm text-muted-foreground">{quantity}g</span>
               </div>
-              <p className="text-muted-foreground">{aiAnalysis}</p>
+              
+              {/* Main nutrients */}
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="bg-background rounded-lg p-2">
+                  <p className="text-lg font-bold text-orange-500">{nutrients.calories}</p>
+                  <p className="text-xs text-muted-foreground">Calories</p>
+                </div>
+                <div className="bg-background rounded-lg p-2">
+                  <p className="text-lg font-bold text-red-400">{nutrients.protein_grams}g</p>
+                  <p className="text-xs text-muted-foreground">Protein</p>
+                </div>
+                <div className="bg-background rounded-lg p-2">
+                  <p className="text-lg font-bold text-yellow-400">{nutrients.carbs_grams}g</p>
+                  <p className="text-xs text-muted-foreground">Carbs</p>
+                </div>
+                <div className="bg-background rounded-lg p-2">
+                  <p className="text-lg font-bold text-blue-400">{nutrients.fats_grams}g</p>
+                  <p className="text-xs text-muted-foreground">Fats</p>
+                </div>
+              </div>
+
+              {/* Micronutrients */}
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Fiber</span>
+                  <span className="font-medium">{nutrients.fiber_grams}g</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Sugar</span>
+                  <span className="font-medium">{nutrients.sugar_grams}g</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Sodium</span>
+                  <span className="font-medium">{nutrients.sodium_mg}mg</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Sat. Fat</span>
+                  <span className="font-medium">{nutrients.saturated_fat_grams}g</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Calcium</span>
+                  <span className="font-medium">{nutrients.calcium_mg}mg</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Iron</span>
+                  <span className="font-medium">{nutrients.iron_mg}mg</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Vitamin A</span>
+                  <span className="font-medium">{nutrients.vitamin_a_iu}IU</span>
+                </div>
+                <div className="flex justify-between p-1.5 bg-background rounded">
+                  <span className="text-muted-foreground">Vitamin C</span>
+                  <span className="font-medium">{nutrients.vitamin_c_mg}mg</span>
+                </div>
+              </div>
             </div>
           )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="calories">Calories</Label>
-              <Input
-                id="calories"
-                type="number"
-                value={calories}
-                onChange={(e) => setCalories(e.target.value)}
-                placeholder="kcal"
-                min="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="protein">Protein (g)</Label>
-              <Input
-                id="protein"
-                type="number"
-                value={protein}
-                onChange={(e) => setProtein(e.target.value)}
-                placeholder="grams"
-                min="0"
-                step="0.1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="carbs">Carbs (g)</Label>
-              <Input
-                id="carbs"
-                type="number"
-                value={carbs}
-                onChange={(e) => setCarbs(e.target.value)}
-                placeholder="grams"
-                min="0"
-                step="0.1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fats">Fats (g)</Label>
-              <Input
-                id="fats"
-                type="number"
-                value={fats}
-                onChange={(e) => setFats(e.target.value)}
-                placeholder="grams"
-                min="0"
-                step="0.1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fiber">Fiber (g)</Label>
-              <Input
-                id="fiber"
-                type="number"
-                value={fiber}
-                onChange={(e) => setFiber(e.target.value)}
-                placeholder="grams"
-                min="0"
-                step="0.1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sugar">Sugar (g)</Label>
-              <Input
-                id="sugar"
-                type="number"
-                value={sugar}
-                onChange={(e) => setSugar(e.target.value)}
-                placeholder="grams"
-                min="0"
-                step="0.1"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="sodium">Sodium (mg)</Label>
-            <Input
-              id="sodium"
-              type="number"
-              value={sodium}
-              onChange={(e) => setSodium(e.target.value)}
-              placeholder="mg"
-              min="0"
-            />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes (optional)</Label>
@@ -418,7 +327,11 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={createLog.isPending}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={createLog.isPending || isLoading || !nutrients}
+          >
             {createLog.isPending ? 'Logging...' : 'Log Meal'}
           </Button>
         </form>
