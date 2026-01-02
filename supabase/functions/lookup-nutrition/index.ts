@@ -37,8 +37,29 @@ serve(async (req) => {
 
     console.log('Searching for food:', query, 'quantity:', quantity, 'unit:', unit);
 
-    // Search Open Food Facts API (free, no API key required)
-    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=5`;
+    const searchTerm = query.trim().toLowerCase();
+    
+    // List of common raw/whole foods that should skip packaged food search
+    const rawFoods = ['apple', 'banana', 'orange', 'egg', 'eggs', 'chicken', 'rice', 'bread', 'milk', 
+      'potato', 'tomato', 'onion', 'carrot', 'broccoli', 'spinach', 'lettuce', 'cucumber', 'pepper',
+      'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp', 'cheese', 'butter', 'yogurt', 'oats',
+      'pasta', 'noodles', 'beans', 'lentils', 'corn', 'peas', 'cabbage', 'mushroom', 'garlic',
+      'ginger', 'avocado', 'mango', 'grape', 'strawberry', 'blueberry', 'watermelon', 'pineapple',
+      'coconut', 'almond', 'walnut', 'peanut', 'cashew', 'roti', 'chapati', 'dal', 'paneer', 'tofu'];
+    
+    const isRawFood = rawFoods.some(food => searchTerm === food || searchTerm === food + 's');
+    
+    // For raw foods, return not found so AI fallback handles it better
+    if (isRawFood) {
+      console.log('Raw food detected, skipping packaged food search:', searchTerm);
+      return new Response(
+        JSON.stringify({ found: false, message: 'Raw food - use AI analysis', isRawFood: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Search Open Food Facts API for packaged products
+    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`;
     
     const response = await fetch(searchUrl, {
       headers: {
@@ -61,8 +82,22 @@ serve(async (req) => {
       );
     }
 
-    // Find the best match with nutrient data
-    const product = data.products.find((p: any) => p.nutriments && p.nutriments.energy_value) || data.products[0];
+    // Find best match - prioritize products whose name closely matches the query
+    const queryLower = query.toLowerCase();
+    let product = data.products.find((p: any) => {
+      const name = (p.product_name || '').toLowerCase();
+      return name === queryLower || name.startsWith(queryLower + ' ') || name.endsWith(' ' + queryLower);
+    });
+    
+    // If no exact match, find one with nutrient data
+    if (!product) {
+      product = data.products.find((p: any) => p.nutriments && (p.nutriments['energy-kcal_100g'] || p.nutriments.energy_value));
+    }
+    
+    // Final fallback
+    if (!product) {
+      product = data.products[0];
+    }
     
     if (!product || !product.nutriments) {
       return new Response(
