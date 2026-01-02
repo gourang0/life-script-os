@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.analyze-nutrition]
 verify_jwt = true
+
+[functions.lookup-nutrition]
+verify_jwt = true
+
+[functions.suggest-calorie-goal]
+verify_jwt = true

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Utensils, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Utensils, Sparkles, Loader2, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,17 +37,69 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
   const [open, setOpen] = useState(false);
   const [mealType, setMealType] = useState<string>('breakfast');
   const [foodItems, setFoodItems] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quantity, setQuantity] = useState('100');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fats, setFats] = useState('');
   const [fiber, setFiber] = useState('');
+  const [sugar, setSugar] = useState('');
+  const [sodium, setSodium] = useState('');
   const [notes, setNotes] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [foundProduct, setFoundProduct] = useState<string | null>(null);
 
   const createLog = useCreateNutritionLog();
+
+  const searchFoodDatabase = async () => {
+    if (!searchQuery.trim()) {
+      toast.error('Please enter a food to search');
+      return;
+    }
+
+    setIsSearching(true);
+    setAnalysisError(null);
+    setFoundProduct(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('lookup-nutrition', {
+        body: { query: searchQuery.trim(), quantity: parseInt(quantity) || 100 }
+      });
+
+      if (error) throw error;
+
+      if (!data.found) {
+        setAnalysisError(data.message || 'No food found. Try "Calculate with AI" instead.');
+        toast.error('No food found');
+        return;
+      }
+
+      // Populate fields with found data
+      setFoodItems(data.product_name + (data.brand ? ` (${data.brand})` : ''));
+      setFoundProduct(data.product_name);
+      
+      const n = data.nutrients;
+      if (n.calories) setCalories(String(n.calories));
+      if (n.protein_grams) setProtein(String(n.protein_grams));
+      if (n.carbs_grams) setCarbs(String(n.carbs_grams));
+      if (n.fats_grams) setFats(String(n.fats_grams));
+      if (n.fiber_grams) setFiber(String(n.fiber_grams));
+      if (n.sugar_grams) setSugar(String(n.sugar_grams));
+      if (n.sodium_mg) setSodium(String(n.sodium_mg));
+
+      toast.success(`Found: ${data.product_name}`);
+    } catch (error) {
+      console.error('Failed to search food:', error);
+      setAnalysisError('Search failed. Try "Calculate with AI" instead.');
+      toast.error('Failed to search food database');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const analyzeWithAI = async () => {
     if (!foodItems.trim()) {
@@ -64,9 +116,7 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
         body: { foodItems: foodItems.trim() }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data.identified) {
         setAnalysisError('No food identified. Please enter valid food items.');
@@ -74,7 +124,6 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
         return;
       }
 
-      // Populate the fields with AI results
       if (data.calories) setCalories(String(Math.round(data.calories)));
       if (data.protein_grams) setProtein(String(Math.round(data.protein_grams * 10) / 10));
       if (data.carbs_grams) setCarbs(String(Math.round(data.carbs_grams * 10) / 10));
@@ -124,14 +173,19 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
   const resetForm = () => {
     setMealType('breakfast');
     setFoodItems('');
+    setSearchQuery('');
+    setQuantity('100');
     setCalories('');
     setProtein('');
     setCarbs('');
     setFats('');
     setFiber('');
+    setSugar('');
+    setSodium('');
     setNotes('');
     setAnalysisError(null);
     setAiAnalysis(null);
+    setFoundProduct(null);
   };
 
   return (
@@ -142,7 +196,7 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
           Log Meal
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Utensils className="w-5 h-5" />
@@ -165,6 +219,57 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Food Database Search */}
+          <div className="space-y-2 p-3 bg-muted/50 rounded-lg border border-border">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <Search className="w-4 h-4" />
+              Search Food Database
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="e.g., chicken breast, apple..."
+                className="flex-1"
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchFoodDatabase())}
+              />
+              <Input
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="g"
+                className="w-20"
+                min="1"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full gap-2"
+              onClick={searchFoodDatabase}
+              disabled={isSearching || !searchQuery.trim()}
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  Search & Auto-Fill ({quantity}g)
+                </>
+              )}
+            </Button>
+          </div>
+
+          {foundProduct && (
+            <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600 dark:text-green-400">
+              ✓ Found: {foundProduct} - nutrients auto-filled!
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="foodItems">Food Items</Label>
@@ -200,7 +305,6 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
             </Button>
           </div>
 
-          {/* Error message */}
           {analysisError && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -208,7 +312,6 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
             </div>
           )}
 
-          {/* AI Analysis note */}
           {aiAnalysis && (
             <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-foreground">
               <div className="flex items-center gap-2 mb-1 font-medium">
@@ -267,18 +370,41 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
                 step="0.1"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="fiber">Fiber (g)</Label>
+              <Input
+                id="fiber"
+                type="number"
+                value={fiber}
+                onChange={(e) => setFiber(e.target.value)}
+                placeholder="grams"
+                min="0"
+                step="0.1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sugar">Sugar (g)</Label>
+              <Input
+                id="sugar"
+                type="number"
+                value={sugar}
+                onChange={(e) => setSugar(e.target.value)}
+                placeholder="grams"
+                min="0"
+                step="0.1"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fiber">Fiber (g)</Label>
+            <Label htmlFor="sodium">Sodium (mg)</Label>
             <Input
-              id="fiber"
+              id="sodium"
               type="number"
-              value={fiber}
-              onChange={(e) => setFiber(e.target.value)}
-              placeholder="grams"
+              value={sodium}
+              onChange={(e) => setSodium(e.target.value)}
+              placeholder="mg"
               min="0"
-              step="0.1"
             />
           </div>
 
