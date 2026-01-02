@@ -326,7 +326,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
             onTouchStart={handleMouseDown}
             onTouchEnd={handleMouseUp}
             style={{
-              right: '-8px',
+              right: '12px',
               top: '128px',
               transformOrigin: 'top center',
               animation: !isLightOn && !isPulling && !isGrabbing ? 'ropeSwing 3s ease-in-out infinite' : 'none',
@@ -341,29 +341,28 @@ export function LampIntro({ onComplete }: LampIntroProps) {
                   : 'radial-gradient(circle at 30% 30%, #A08060, #8B7355)',
               }}
             />
-            {/* Cord - braided rope */}
+            {/* Cord - braided rope that extends when pulled */}
             <div 
-              className="w-1 mx-auto rounded-full transition-all duration-200"
+              className="w-1 mx-auto rounded-full"
               style={{
-                height: isPulling ? '100px' : isGrabbing ? '85px' : '70px',
+                height: isPulling ? '110px' : isGrabbing ? '90px' : '70px',
                 background: isLightOn 
                   ? 'linear-gradient(180deg, #D4A574 0%, #C19660 50%, #B8860B 100%)' 
                   : 'linear-gradient(180deg, #A08060 0%, #8B7355 50%, #6B5344 100%)',
                 boxShadow: '1px 0 2px rgba(0,0,0,0.2)',
-                transform: isGrabbing ? 'translateY(15px)' : isPulling ? 'translateY(30px)' : 'none',
-                transition: 'height 0.15s ease-out, transform 0.15s ease-out',
+                transition: 'height 0.15s ease-out',
               }}
             />
             {/* Pull ball/tassel - decorative brass ball */}
             <div 
-              className="w-6 h-8 mx-auto rounded-full transition-all duration-200 shadow-lg"
+              className="w-6 h-8 mx-auto rounded-full shadow-lg"
               style={{
                 background: isLightOn 
                   ? 'radial-gradient(circle at 30% 30%, #FFD700, #DAA520, #B8860B)' 
                   : isGrabbing
                     ? 'radial-gradient(circle at 30% 30%, hsl(var(--accent)), hsl(var(--accent) / 0.8))'
                     : 'radial-gradient(circle at 30% 30%, #C19A6B, #A0826D, #8B7355)',
-                transform: isGrabbing ? 'translateY(15px) scale(1.15)' : isPulling ? 'translateY(30px) scale(1.1)' : 'scale(1)',
+                transform: isGrabbing ? 'scale(1.15)' : 'scale(1)',
                 boxShadow: isLightOn 
                   ? '0 0 25px hsl(var(--primary) / 0.6)' 
                   : isGrabbing 
@@ -375,13 +374,11 @@ export function LampIntro({ onComplete }: LampIntroProps) {
             {/* Pull indicator */}
             {!isLightOn && !isPulling && (
               <div 
-                className="absolute left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap px-2 py-1 rounded-full"
+                className="absolute left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap px-2 py-1 rounded-full mt-2"
                 style={{
-                  top: isPulling ? '140px' : isGrabbing ? '125px' : '100px',
                   color: 'hsl(var(--foreground))',
                   background: 'hsl(var(--card) / 0.9)',
                   border: '1px solid hsl(var(--border))',
-                  transition: 'top 0.15s ease-out',
                 }}
               >
                 {isGrabbing ? '↓ Pull!' : '👆 Grab'}
