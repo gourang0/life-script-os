@@ -1,7 +1,8 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import { Trophy, Target, TrendingUp, Calendar } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { ScheduleEntry } from '@/hooks/useScheduleEntries';
 import { Routine } from '@/hooks/useRoutines';
+import { cn } from '@/lib/utils';
 
 interface HabitProgressSidebarProps {
   routines: Routine[];
@@ -15,39 +16,8 @@ export function HabitProgressSidebar({ routines, entries, selectedMonth }: Habit
   const today = new Date();
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd > today ? today : monthEnd });
 
-  // Calculate overall stats
-  const calculateOverallStats = () => {
-    let totalScheduled = 0;
-    let totalCompleted = 0;
-
-    daysInMonth.forEach(day => {
-      const dayOfWeek = day.getDay();
-      routines.forEach(routine => {
-        if (routine.days_of_week.includes(dayOfWeek)) {
-          totalScheduled++;
-          const dateString = format(day, 'yyyy-MM-dd');
-          const entry = entries.find(e => 
-            e.routine_id === routine.id && 
-            e.entry_date === dateString && 
-            e.is_completed
-          );
-          if (entry) {
-            totalCompleted++;
-          }
-        }
-      });
-    });
-
-    return {
-      completed: totalCompleted,
-      total: totalScheduled,
-      percentage: totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : 0,
-      left: totalScheduled - totalCompleted
-    };
-  };
-
-  // Get top habits by completion rate
-  const getTopHabits = () => {
+  // Get habits with completion stats
+  const getHabitsWithStats = () => {
     return routines.map(routine => {
       let completed = 0;
       let total = 0;
@@ -72,13 +42,13 @@ export function HabitProgressSidebar({ routines, entries, selectedMonth }: Habit
         ...routine,
         completed,
         total,
+        left: total - completed,
         percentage: total > 0 ? Math.round((completed / total) * 100) : 0
       };
-    }).sort((a, b) => b.percentage - a.percentage).slice(0, 10);
+    }).sort((a, b) => b.percentage - a.percentage);
   };
 
-  const stats = calculateOverallStats();
-  const topHabits = getTopHabits();
+  const habitsWithStats = getHabitsWithStats();
 
   const categoryEmojis: Record<string, string> = {
     lifestyle: '🌟',
@@ -89,86 +59,82 @@ export function HabitProgressSidebar({ routines, entries, selectedMonth }: Habit
   };
 
   return (
-    <div className="space-y-6">
-      {/* Overall Progress */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          Overall Progress
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="text-center p-3 bg-primary/10 rounded-lg">
-            <div className="text-2xl font-bold text-primary">{stats.completed}</div>
-            <div className="text-xs text-muted-foreground">Completed</div>
-          </div>
-          <div className="text-center p-3 bg-muted/30 rounded-lg">
-            <div className="text-2xl font-bold text-foreground">{stats.left}</div>
-            <div className="text-xs text-muted-foreground">Left</div>
-          </div>
+    <div className="space-y-4">
+      {/* Top 10 Daily Habits */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="bg-primary/10 p-3 border-b border-border">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-primary" />
+            TOP 10 DAILY HABITS
+          </h3>
         </div>
-        <div className="mt-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-semibold text-foreground">{stats.percentage}%</span>
-          </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${stats.percentage}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Top Habits */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-          <Trophy className="w-5 h-5 text-primary" />
-          Top 10 Daily Habits
-        </h3>
-        <div className="space-y-2">
-          {topHabits.length === 0 ? (
+        <div className="p-2">
+          {habitsWithStats.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No habits tracked yet
             </p>
           ) : (
-            topHabits.map((habit, index) => (
-              <div 
-                key={habit.id}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/20 transition-colors"
-              >
-                <span className="text-sm font-medium text-muted-foreground w-5">
-                  {index + 1}
-                </span>
-                <span className="text-sm">{categoryEmojis[habit.category]}</span>
-                <span className="flex-1 text-sm font-medium text-foreground truncate">
-                  {habit.title}
-                </span>
-                <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                  {habit.percentage}%
-                </span>
-              </div>
-            ))
+            <table className="w-full text-sm">
+              <tbody>
+                {habitsWithStats.slice(0, 10).map((habit, index) => (
+                  <tr key={habit.id} className="hover:bg-muted/20">
+                    <td className="p-1.5 w-6 text-muted-foreground font-medium">{index + 1}</td>
+                    <td className="p-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">{categoryEmojis[habit.category]}</span>
+                        <span className="truncate max-w-[120px] text-foreground">{habit.title}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
 
-      {/* Monthly Summary */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-          <Calendar className="w-5 h-5 text-primary" />
-          {format(selectedMonth, 'MMMM yyyy')}
-        </h3>
-        <div className="grid grid-cols-2 gap-2 text-center">
-          <div className="p-2 bg-muted/20 rounded-lg">
-            <div className="text-lg font-bold text-foreground">{routines.length}</div>
-            <div className="text-xs text-muted-foreground">Total Habits</div>
-          </div>
-          <div className="p-2 bg-muted/20 rounded-lg">
-            <div className="text-lg font-bold text-foreground">{daysInMonth.length}</div>
-            <div className="text-xs text-muted-foreground">Days Tracked</div>
-          </div>
+      {/* Overall Progress Table */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="bg-primary/10 p-3 border-b border-border">
+          <h3 className="font-semibold text-foreground text-center">OVERALL PROGRESS</h3>
         </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-muted/30">
+              <th className="p-2 text-left text-muted-foreground font-medium">#</th>
+              <th className="p-2 text-center text-muted-foreground font-medium">COMP</th>
+              <th className="p-2 text-center text-muted-foreground font-medium">LEFT</th>
+              <th className="p-2 text-right text-muted-foreground font-medium">%</th>
+              <th className="p-2 w-20"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {habitsWithStats.map((habit, index) => (
+              <tr key={habit.id} className={cn(
+                "hover:bg-muted/20",
+                index % 2 === 0 ? "bg-card" : "bg-background"
+              )}>
+                <td className="p-2 text-muted-foreground">{index + 1}</td>
+                <td className="p-2 text-center font-medium text-foreground">{habit.completed}</td>
+                <td className="p-2 text-center font-medium text-foreground">{habit.left}</td>
+                <td className="p-2 text-right font-semibold text-foreground">{habit.percentage}%</td>
+                <td className="p-2">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        habit.percentage >= 80 ? "bg-green-500" :
+                        habit.percentage >= 50 ? "bg-primary" :
+                        "bg-muted-foreground/30"
+                      )}
+                      style={{ width: `${habit.percentage}%` }}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
