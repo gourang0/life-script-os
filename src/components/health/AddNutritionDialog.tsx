@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Utensils } from 'lucide-react';
+import { Plus, Utensils, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateNutritionLog } from '@/hooks/useHealth';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddNutritionDialogProps {
   selectedDate: string;
@@ -43,8 +43,54 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
   const [fats, setFats] = useState('');
   const [fiber, setFiber] = useState('');
   const [notes, setNotes] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
 
   const createLog = useCreateNutritionLog();
+
+  const analyzeWithAI = async () => {
+    if (!foodItems.trim()) {
+      toast.error('Please enter food items first');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    setAiAnalysis(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-nutrition', {
+        body: { foodItems: foodItems.trim() }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data.identified) {
+        setAnalysisError('No food identified. Please enter valid food items.');
+        toast.error('No food identified');
+        return;
+      }
+
+      // Populate the fields with AI results
+      if (data.calories) setCalories(String(Math.round(data.calories)));
+      if (data.protein_grams) setProtein(String(Math.round(data.protein_grams * 10) / 10));
+      if (data.carbs_grams) setCarbs(String(Math.round(data.carbs_grams * 10) / 10));
+      if (data.fats_grams) setFats(String(Math.round(data.fats_grams * 10) / 10));
+      if (data.fiber_grams) setFiber(String(Math.round(data.fiber_grams * 10) / 10));
+      if (data.analysis) setAiAnalysis(data.analysis);
+
+      toast.success('Nutrition calculated!');
+    } catch (error) {
+      console.error('Failed to analyze nutrition:', error);
+      setAnalysisError('Failed to analyze. Please try again or enter values manually.');
+      toast.error('Failed to analyze nutrition');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +130,8 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
     setFats('');
     setFiber('');
     setNotes('');
+    setAnalysisError(null);
+    setAiAnalysis(null);
   };
 
   return (
@@ -123,11 +171,53 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
             <Textarea
               id="foodItems"
               value={foodItems}
-              onChange={(e) => setFoodItems(e.target.value)}
+              onChange={(e) => {
+                setFoodItems(e.target.value);
+                setAnalysisError(null);
+              }}
               placeholder="e.g., 2 eggs, toast, orange juice..."
               rows={2}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={analyzeWithAI}
+              disabled={isAnalyzing || !foodItems.trim()}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Calculate with AI
+                </>
+              )}
+            </Button>
           </div>
+
+          {/* Error message */}
+          {analysisError && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {analysisError}
+            </div>
+          )}
+
+          {/* AI Analysis note */}
+          {aiAnalysis && (
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-foreground">
+              <div className="flex items-center gap-2 mb-1 font-medium">
+                <Sparkles className="w-4 h-4 text-primary" />
+                AI Analysis
+              </div>
+              <p className="text-muted-foreground">{aiAnalysis}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
