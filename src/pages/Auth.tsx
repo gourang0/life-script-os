@@ -66,12 +66,41 @@ export default function Auth() {
     }
   };
 
+  const replayLampIntro = () => {
+    sessionStorage.removeItem('lampIntroShown');
+    setShowContent(false);
+    setShowIntro(true);
+  };
+
   return (
     <>
       {showIntro && <LampIntro onComplete={handleIntroComplete} />}
       
       <div className="min-h-screen relative overflow-hidden">
         <AnimatedBackground />
+        
+        {/* Replay lamp button */}
+        {showContent && (
+          <button
+            onClick={replayLampIntro}
+            className="fixed top-4 right-4 z-20 p-2 rounded-full backdrop-blur-sm border shadow-lg transition-all hover:scale-110"
+            style={{
+              background: 'hsl(var(--card) / 0.8)',
+              borderColor: 'hsl(var(--border))',
+            }}
+            title="Replay lamp animation"
+          >
+            <svg 
+              className="w-5 h-5" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+              style={{ color: 'hsl(var(--primary))' }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        )}
         
         {/* Main content */}
         <div 
