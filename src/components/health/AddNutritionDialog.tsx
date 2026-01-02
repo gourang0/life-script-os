@@ -52,6 +52,7 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
   const [mealType, setMealType] = useState<string>('breakfast');
   const [foodName, setFoodName] = useState('');
   const [quantity, setQuantity] = useState('100');
+  const [quantityUnit, setQuantityUnit] = useState<'grams' | 'quantity'>('grams');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,7 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [foodName, quantity]);
+  }, [foodName, quantity, quantityUnit]);
 
   const lookupNutrition = async () => {
     if (!foodName.trim()) return;
@@ -83,9 +84,12 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
     setError(null);
 
     try {
+      const quantityValue = parseInt(quantity) || (quantityUnit === 'grams' ? 100 : 1);
+      const quantityStr = quantityUnit === 'grams' ? `${quantityValue}g` : `${quantityValue} ${quantityValue > 1 ? 'pieces' : 'piece'}`;
+      
       // First try the food database
       const { data: dbData, error: dbError } = await supabase.functions.invoke('lookup-nutrition', {
-        body: { query: foodName.trim(), quantity: parseInt(quantity) || 100 }
+        body: { query: foodName.trim(), quantity: quantityValue, unit: quantityUnit }
       });
 
       if (!dbError && dbData?.found) {
@@ -96,7 +100,7 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
 
       // If not found in database, use AI
       const { data: aiData, error: aiError } = await supabase.functions.invoke('analyze-nutrition', {
-        body: { foodItems: `${quantity}g of ${foodName.trim()}` }
+        body: { foodItems: `${quantityStr} of ${foodName.trim()}` }
       });
 
       if (aiError) throw aiError;
@@ -171,6 +175,7 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
     setMealType('breakfast');
     setFoodName('');
     setQuantity('100');
+    setQuantityUnit('grams');
     setNotes('');
     setError(null);
     setNutrients(null);
@@ -230,11 +235,19 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
                   className="w-20"
                   min="1"
                 />
-                <span className="text-sm text-muted-foreground">g</span>
+                <Select value={quantityUnit} onValueChange={(v) => setQuantityUnit(v as 'grams' | 'quantity')}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grams">grams</SelectItem>
+                    <SelectItem value="quantity">qty</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Enter food name and quantity - nutrition is calculated automatically
+              Enter food name and {quantityUnit === 'grams' ? 'weight in grams' : 'number of items'} - nutrition is calculated automatically
             </p>
           </div>
 
@@ -256,7 +269,9 @@ export function AddNutritionDialog({ selectedDate }: AddNutritionDialogProps) {
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">{productName}</span>
-                <span className="text-sm text-muted-foreground">{quantity}g</span>
+                <span className="text-sm text-muted-foreground">
+                  {quantity} {quantityUnit === 'grams' ? 'g' : (parseInt(quantity) > 1 ? 'pcs' : 'pc')}
+                </span>
               </div>
               
               {/* Main nutrients */}

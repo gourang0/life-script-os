@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, quantity = 100 } = await req.json();
+    const { query, quantity = 100, unit = 'grams' } = await req.json();
     
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
       return new Response(
@@ -35,7 +35,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Searching for food:', query, 'quantity:', quantity);
+    console.log('Searching for food:', query, 'quantity:', quantity, 'unit:', unit);
 
     // Search Open Food Facts API (free, no API key required)
     const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=5`;
@@ -72,7 +72,22 @@ serve(async (req) => {
     }
 
     const n = product.nutriments;
-    const multiplier = quantity / 100; // API gives per 100g
+    
+    // Calculate multiplier based on unit type
+    let multiplier: number;
+    let servingDisplay: string;
+    
+    if (unit === 'quantity') {
+      // For quantity (count), estimate typical serving size
+      // Common single serving sizes for various foods (in grams)
+      const servingSize = product.serving_quantity || 100; // fallback to 100g if no serving info
+      multiplier = (servingSize * quantity) / 100;
+      servingDisplay = `${quantity} ${quantity > 1 ? 'pieces' : 'piece'}`;
+    } else {
+      // For grams, use direct calculation
+      multiplier = quantity / 100; // API gives per 100g
+      servingDisplay = `${quantity}g`;
+    }
 
     const nutrients: NutrientInfo = {
       calories: Math.round((n['energy-kcal_100g'] || n['energy_100g'] / 4.184 || 0) * multiplier),
@@ -96,7 +111,7 @@ serve(async (req) => {
         found: true,
         product_name: product.product_name || product.generic_name || query,
         brand: product.brands || null,
-        serving_size: `${quantity}g`,
+        serving_size: servingDisplay,
         nutrients,
         image_url: product.image_url || product.image_front_url || null,
       }),
