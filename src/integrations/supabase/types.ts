@@ -442,42 +442,60 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_level: string | null
+          age: number | null
           avatar_url: string | null
           best_streak: number
+          calorie_goal: number | null
           created_at: string
           current_streak: number
           display_name: string | null
+          gender: string | null
+          height_cm: number | null
           id: string
           level: number
           streak_freeze_count: number
           total_tasks_completed: number
           updated_at: string
+          weight_kg: number | null
           xp_points: number
         }
         Insert: {
+          activity_level?: string | null
+          age?: number | null
           avatar_url?: string | null
           best_streak?: number
+          calorie_goal?: number | null
           created_at?: string
           current_streak?: number
           display_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
           id: string
           level?: number
           streak_freeze_count?: number
           total_tasks_completed?: number
           updated_at?: string
+          weight_kg?: number | null
           xp_points?: number
         }
         Update: {
+          activity_level?: string | null
+          age?: number | null
           avatar_url?: string | null
           best_streak?: number
+          calorie_goal?: number | null
           created_at?: string
           current_streak?: number
           display_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
           id?: string
           level?: number
           streak_freeze_count?: number
           total_tasks_completed?: number
           updated_at?: string
+          weight_kg?: number | null
           xp_points?: number
         }
         Relationships: []

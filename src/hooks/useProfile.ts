@@ -12,6 +12,12 @@ export interface Profile {
   best_streak: number;
   streak_freeze_count: number;
   total_tasks_completed: number;
+  calorie_goal: number | null;
+  activity_level: string | null;
+  age: number | null;
+  weight_kg: number | null;
+  height_cm: number | null;
+  gender: string | null;
   created_at: string;
   updated_at: string;
 }
