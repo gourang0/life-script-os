@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Flame, TrendingUp, TrendingDown, Equal, Target, Sparkles, Loader2, Settings } from 'lucide-react';
+import { Flame, TrendingUp, TrendingDown, Equal, Target, Settings, Save } from 'lucide-react';
 import { NutritionLog, ExerciseLog } from '@/hooks/useHealth';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,14 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { Progress } from '@/components/ui/progress';
@@ -28,25 +20,11 @@ interface HealthSummaryProps {
   exerciseLogs: ExerciseLog[];
 }
 
-const activityLevels = [
-  { value: 'sedentary', label: 'Sedentary (little/no exercise)' },
-  { value: 'light', label: 'Light (1-3 days/week)' },
-  { value: 'moderate', label: 'Moderate (3-5 days/week)' },
-  { value: 'active', label: 'Active (6-7 days/week)' },
-  { value: 'very_active', label: 'Very Active (hard exercise daily)' },
-];
-
 export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProps) {
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [age, setAge] = useState('');
-  const [weight, setWeight] = useState('');
-  const [height, setHeight] = useState('');
-  const [gender, setGender] = useState('');
-  const [activityLevel, setActivityLevel] = useState('moderate');
-  const [suggestedGoal, setSuggestedGoal] = useState<any>(null);
+  const [calorieTarget, setCalorieTarget] = useState('');
 
   // Calculate totals
   const totalCaloriesIn = nutritionLogs.reduce((sum, log) => sum + (log.calories || 0), 0);
@@ -65,75 +43,31 @@ export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProp
   const calorieGoal = (profile as any)?.calorie_goal || null;
   const calorieProgress = calorieGoal ? Math.min((totalCaloriesIn / calorieGoal) * 100, 100) : 0;
 
-  const calculateGoalWithAI = async () => {
-    if (!age || !weight || !height || !gender) {
-      toast.error('Please fill in all profile fields');
+  const openGoalDialog = () => {
+    if (calorieGoal) {
+      setCalorieTarget(String(calorieGoal));
+    }
+    setGoalDialogOpen(true);
+  };
+
+  const saveCalorieGoal = async () => {
+    const target = parseInt(calorieTarget);
+    if (!target || target < 500 || target > 10000) {
+      toast.error('Please enter a valid calorie target (500-10000)');
       return;
     }
 
-    setIsCalculating(true);
-    setSuggestedGoal(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('suggest-calorie-goal', {
-        body: {
-          age: parseInt(age),
-          weight_kg: parseFloat(weight),
-          height_cm: parseFloat(height),
-          gender,
-          activity_level: activityLevel,
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
-        return;
-      }
-
-      setSuggestedGoal(data);
-      toast.success('Calorie goal calculated!');
-    } catch (error) {
-      console.error('Failed to calculate goal:', error);
-      toast.error('Failed to calculate goal');
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  const saveGoal = async () => {
-    if (!suggestedGoal) return;
-
     try {
       await updateProfile.mutateAsync({
-        calorie_goal: suggestedGoal.calorie_goal,
-        activity_level: activityLevel,
-        age: parseInt(age),
-        weight_kg: parseFloat(weight),
-        height_cm: parseFloat(height),
-        gender,
+        calorie_goal: target,
       } as any);
       
-      toast.success('Calorie goal saved!');
+      toast.success('Calorie target saved!');
       setGoalDialogOpen(false);
     } catch (error) {
       console.error('Failed to save goal:', error);
-      toast.error('Failed to save goal');
+      toast.error('Failed to save calorie target');
     }
-  };
-
-  const openGoalDialog = () => {
-    // Pre-fill with existing profile data
-    if (profile) {
-      const p = profile as any;
-      if (p.age) setAge(String(p.age));
-      if (p.weight_kg) setWeight(String(p.weight_kg));
-      if (p.height_cm) setHeight(String(p.height_cm));
-      if (p.gender) setGender(p.gender);
-      if (p.activity_level) setActivityLevel(p.activity_level);
-    }
-    setGoalDialogOpen(true);
   };
 
   return (
@@ -144,7 +78,7 @@ export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProp
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-foreground">Daily Calorie Goal</span>
+              <span className="font-semibold text-foreground">Daily Calorie Target</span>
             </div>
             <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
               <DialogTrigger asChild>
@@ -152,18 +86,39 @@ export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProp
                   <Settings className="w-4 h-4" />
                 </Button>
               </DialogTrigger>
-              <CalorieGoalDialogContent
-                age={age} setAge={setAge}
-                weight={weight} setWeight={setWeight}
-                height={height} setHeight={setHeight}
-                gender={gender} setGender={setGender}
-                activityLevel={activityLevel} setActivityLevel={setActivityLevel}
-                isCalculating={isCalculating}
-                calculateGoalWithAI={calculateGoalWithAI}
-                suggestedGoal={suggestedGoal}
-                saveGoal={saveGoal}
-                updateProfile={updateProfile}
-              />
+              <DialogContent className="sm:max-w-[350px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-primary" />
+                    Set Calorie Target
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="calorieTarget">Daily Calorie Limit (kcal)</Label>
+                    <Input
+                      id="calorieTarget"
+                      type="number"
+                      value={calorieTarget}
+                      onChange={(e) => setCalorieTarget(e.target.value)}
+                      placeholder="e.g., 2000"
+                      min="500"
+                      max="10000"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Recommended: 1500-2500 kcal for most adults
+                    </p>
+                  </div>
+                  <Button 
+                    className="w-full gap-2" 
+                    onClick={saveCalorieGoal}
+                    disabled={updateProfile.isPending}
+                  >
+                    <Save className="w-4 h-4" />
+                    {updateProfile.isPending ? 'Saving...' : 'Save Target'}
+                  </Button>
+                </div>
+              </DialogContent>
             </Dialog>
           </div>
           <div className="space-y-2">
@@ -175,7 +130,7 @@ export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProp
             <p className="text-xs text-muted-foreground">
               {calorieGoal - totalCaloriesIn > 0 
                 ? `${calorieGoal - totalCaloriesIn} kcal remaining`
-                : `${totalCaloriesIn - calorieGoal} kcal over goal`}
+                : `${totalCaloriesIn - calorieGoal} kcal over target`}
             </p>
           </div>
         </div>
@@ -185,31 +140,52 @@ export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProp
             <div>
               <h4 className="font-medium text-foreground flex items-center gap-2">
                 <Target className="w-4 h-4 text-muted-foreground" />
-                Set Your Calorie Goal
+                Set Your Calorie Target
               </h4>
               <p className="text-sm text-muted-foreground mt-1">
-                Get AI-powered daily calorie recommendation based on your profile
+                Enter your daily calorie limit to track progress
               </p>
             </div>
             <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-2" onClick={openGoalDialog}>
-                  <Sparkles className="w-4 h-4" />
-                  Calculate
+                  <Target className="w-4 h-4" />
+                  Set Target
                 </Button>
               </DialogTrigger>
-              <CalorieGoalDialogContent
-                age={age} setAge={setAge}
-                weight={weight} setWeight={setWeight}
-                height={height} setHeight={setHeight}
-                gender={gender} setGender={setGender}
-                activityLevel={activityLevel} setActivityLevel={setActivityLevel}
-                isCalculating={isCalculating}
-                calculateGoalWithAI={calculateGoalWithAI}
-                suggestedGoal={suggestedGoal}
-                saveGoal={saveGoal}
-                updateProfile={updateProfile}
-              />
+              <DialogContent className="sm:max-w-[350px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-primary" />
+                    Set Calorie Target
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="calorieTarget">Daily Calorie Limit (kcal)</Label>
+                    <Input
+                      id="calorieTarget"
+                      type="number"
+                      value={calorieTarget}
+                      onChange={(e) => setCalorieTarget(e.target.value)}
+                      placeholder="e.g., 2000"
+                      min="500"
+                      max="10000"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Recommended: 1500-2500 kcal for most adults
+                    </p>
+                  </div>
+                  <Button 
+                    className="w-full gap-2" 
+                    onClick={saveCalorieGoal}
+                    disabled={updateProfile.isPending}
+                  >
+                    <Save className="w-4 h-4" />
+                    {updateProfile.isPending ? 'Saving...' : 'Save Target'}
+                  </Button>
+                </div>
+              </DialogContent>
             </Dialog>
           </div>
         </div>
@@ -292,154 +268,5 @@ export function HealthSummary({ nutritionLogs, exerciseLogs }: HealthSummaryProp
         )}
       </div>
     </div>
-  );
-}
-
-// Extracted dialog content component
-function CalorieGoalDialogContent({
-  age, setAge,
-  weight, setWeight,
-  height, setHeight,
-  gender, setGender,
-  activityLevel, setActivityLevel,
-  isCalculating,
-  calculateGoalWithAI,
-  suggestedGoal,
-  saveGoal,
-  updateProfile,
-}: any) {
-  return (
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          AI Calorie Goal Calculator
-        </DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="age">Age</Label>
-            <Input
-              id="age"
-              type="number"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              placeholder="25"
-              min="10"
-              max="120"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="weight">Weight (kg)</Label>
-            <Input
-              id="weight"
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="70"
-              min="20"
-              step="0.1"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="height">Height (cm)</Label>
-            <Input
-              id="height"
-              type="number"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              placeholder="175"
-              min="100"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Activity Level</Label>
-          <Select value={activityLevel} onValueChange={setActivityLevel}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {activityLevels.map((level) => (
-                <SelectItem key={level.value} value={level.value}>
-                  {level.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button
-          type="button"
-          className="w-full gap-2"
-          onClick={calculateGoalWithAI}
-          disabled={isCalculating || !age || !weight || !height || !gender}
-        >
-          {isCalculating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Calculating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              Calculate with AI
-            </>
-          )}
-        </Button>
-
-        {suggestedGoal && (
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 space-y-3">
-            <h4 className="font-semibold text-foreground">AI Recommendation</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-muted-foreground">Daily Calories</p>
-                <p className="text-2xl font-bold text-primary">{suggestedGoal.calorie_goal}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">BMR</p>
-                <p className="text-lg font-semibold text-foreground">{suggestedGoal.bmr}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Protein</p>
-                <p className="font-medium text-red-400">{suggestedGoal.protein_goal_grams}g</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Carbs</p>
-                <p className="font-medium text-yellow-400">{suggestedGoal.carbs_goal_grams}g</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Fats</p>
-                <p className="font-medium text-blue-400">{suggestedGoal.fats_goal_grams}g</p>
-              </div>
-            </div>
-            {suggestedGoal.recommendation && (
-              <p className="text-sm text-muted-foreground mt-2">{suggestedGoal.recommendation}</p>
-            )}
-            <Button 
-              className="w-full mt-2" 
-              onClick={saveGoal}
-              disabled={updateProfile.isPending}
-            >
-              {updateProfile.isPending ? 'Saving...' : 'Save as My Goal'}
-            </Button>
-          </div>
-        )}
-      </div>
-    </DialogContent>
   );
 }
