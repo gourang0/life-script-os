@@ -10,7 +10,6 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Schedule from "./pages/Schedule";
-import Routines from "./pages/Routines";
 import Health from "./pages/Health";
 import Analytics from "./pages/Analytics";
 import Exceptions from "./pages/Exceptions";
@@ -35,7 +34,6 @@ const App = () => (
             <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
-            <Route path="/routines" element={<ProtectedRoute><Routines /></ProtectedRoute>} />
             <Route path="/health" element={<ProtectedRoute><Health /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/exceptions" element={<ProtectedRoute><Exceptions /></ProtectedRoute>} />
