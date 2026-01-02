@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from 'date-fns';
+import { format, addDays, subDays, isToday, isTomorrow, isYesterday, isFuture, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -12,14 +12,34 @@ import { cn } from '@/lib/utils';
 interface DateSelectorProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
+  allowFuture?: boolean;
 }
 
-export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) {
+export function DateSelector({ selectedDate, onDateChange, allowFuture = false }: DateSelectorProps) {
+  const today = startOfDay(new Date());
+  
   const getDateLabel = (date: Date) => {
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
     if (isYesterday(date)) return 'Yesterday';
     return format(date, 'EEEE');
+  };
+
+  const canGoForward = allowFuture || !isToday(selectedDate);
+
+  const handleNextDay = () => {
+    const nextDay = addDays(selectedDate, 1);
+    if (allowFuture || !isFuture(nextDay)) {
+      onDateChange(nextDay);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    if (!allowFuture && isFuture(startOfDay(date))) {
+      return; // Don't allow future dates
+    }
+    onDateChange(date);
   };
 
   return (
@@ -46,7 +66,8 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
           <Calendar
             mode="single"
             selected={selectedDate}
-            onSelect={(date) => date && onDateChange(date)}
+            onSelect={handleDateSelect}
+            disabled={allowFuture ? undefined : { after: today }}
             initialFocus
             className={cn("p-3 pointer-events-auto")}
           />
@@ -56,7 +77,8 @@ export function DateSelector({ selectedDate, onDateChange }: DateSelectorProps) 
       <Button
         variant="outline"
         size="icon"
-        onClick={() => onDateChange(addDays(selectedDate, 1))}
+        onClick={handleNextDay}
+        disabled={!canGoForward}
       >
         <ChevronRight className="w-4 h-4" />
       </Button>
