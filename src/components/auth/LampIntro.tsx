@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useState, useEffect, useCallback } from 'react';
 import { Confetti } from '@/components/ui/confetti';
 
 interface LampIntroProps {
@@ -14,6 +13,16 @@ interface Sparkle {
   delay: number;
 }
 
+// Audio context singleton
+let audioContext: AudioContext | null = null;
+
+const getAudioContext = () => {
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+  return audioContext;
+};
+
 export function LampIntro({ onComplete }: LampIntroProps) {
   const [isLightOn, setIsLightOn] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
@@ -23,7 +32,60 @@ export function LampIntro({ onComplete }: LampIntroProps) {
   const [isBlinking, setIsBlinking] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isGrabbing, setIsGrabbing] = useState(false);
-  const { playClick } = useSoundEffects();
+  const [isHovering, setIsHovering] = useState(false);
+
+  // Sound effect: Click sound
+  const playClickSound = useCallback(() => {
+    try {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.1);
+    } catch (e) {
+      console.log('Audio not available');
+    }
+  }, []);
+
+  // Sound effect: Happy chime
+  const playHappyChime = useCallback(() => {
+    try {
+      const ctx = getAudioContext();
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      
+      notes.forEach((freq, index) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+        
+        const startTime = ctx.currentTime + index * 0.1;
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.4);
+      });
+    } catch (e) {
+      console.log('Audio not available');
+    }
+  }, []);
 
   // Blinking animation before light is on
   useEffect(() => {
@@ -63,6 +125,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
   const handleMouseDown = () => {
     if (isLightOn) return;
     setIsGrabbing(true);
+    playClickSound();
   };
 
   const handleMouseUp = () => {
@@ -71,12 +134,12 @@ export function LampIntro({ onComplete }: LampIntroProps) {
     setIsGrabbing(false);
     setIsPulling(true);
     setShowHint(false);
-    playClick();
     
     setTimeout(() => {
       setIsPulling(false);
       setIsLightOn(true);
       setIsWiggling(true);
+      playHappyChime();
       
       setTimeout(() => {
         setIsWiggling(false);
@@ -90,10 +153,11 @@ export function LampIntro({ onComplete }: LampIntroProps) {
 
   return (
     <div 
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-1000 overflow-hidden ${
-        isLightOn ? 'bg-background' : 'bg-primary/5'
-      }`}
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-1000 overflow-hidden`}
       style={{
+        background: isLightOn 
+          ? 'hsl(var(--background))' 
+          : 'linear-gradient(180deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--background)) 100%)',
         opacity: isLightOn ? 0 : 1,
         pointerEvents: isLightOn ? 'none' : 'auto',
         transitionDelay: isLightOn ? '1.2s' : '0s'
@@ -116,8 +180,9 @@ export function LampIntro({ onComplete }: LampIntroProps) {
         {/* Pulsing glow effect when lamp is OFF */}
         {!isLightOn && (
           <div 
-            className="absolute -top-8 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full bg-primary/20 blur-3xl"
+            className="absolute -top-8 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl"
             style={{
+              background: 'hsl(var(--primary) / 0.3)',
               animation: 'pulseGlow 2s ease-in-out infinite',
             }}
           />
@@ -137,7 +202,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
               opacity: 0,
             }}
           >
-            <svg viewBox="0 0 24 24" fill="hsl(var(--accent))" className="w-full h-full">
+            <svg viewBox="0 0 24 24" className="w-full h-full" style={{ fill: 'hsl(var(--accent))' }}>
               <path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" />
             </svg>
           </div>
@@ -146,45 +211,68 @@ export function LampIntro({ onComplete }: LampIntroProps) {
         {/* Light glow effect - only when ON */}
         {isLightOn && (
           <>
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-accent/40 blur-3xl animate-pulse" />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full bg-accent/60 blur-2xl" />
+            <div 
+              className="absolute -top-10 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl animate-pulse"
+              style={{ background: 'hsl(var(--accent) / 0.4)' }}
+            />
+            <div 
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-2xl"
+              style={{ background: 'hsl(var(--accent) / 0.6)' }}
+            />
           </>
         )}
         
-        {/* Lamp Shade */}
-        <div className="relative z-10">
-          {/* Shade top rim */}
+        {/* Lamp Shade with hover sway */}
+        <div 
+          className="relative z-10"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          style={{
+            animation: isHovering && !isLightOn ? 'sway 0.5s ease-in-out infinite' : 'none',
+          }}
+        >
+          {/* Shade top rim - off-white/cream color */}
           <div 
-            className={`w-24 h-3 rounded-t-full mx-auto transition-all duration-500 border-t-2 border-x-2 ${
-              isLightOn 
-                ? 'bg-accent border-accent/80 shadow-[0_0_60px_30px_hsl(var(--accent)/0.6)]' 
-                : 'bg-muted-foreground/30 border-muted-foreground/40'
-            }`}
-          />
-          {/* Shade body - elegant trapezoid */}
-          <div 
-            className={`w-40 h-32 mx-auto transition-all duration-500 relative border-x-2 border-b-2 ${
-              isLightOn 
-                ? 'bg-gradient-to-b from-accent/90 to-accent/60 border-accent/50' 
-                : 'bg-gradient-to-b from-muted-foreground/25 to-muted-foreground/15 border-muted-foreground/30'
-            }`}
+            className="w-24 h-3 rounded-t-full mx-auto transition-all duration-500 border-t-2 border-x-2"
             style={{
+              background: isLightOn 
+                ? 'linear-gradient(180deg, #FFF8E7 0%, #FFE4B5 100%)' 
+                : '#F5F5DC',
+              borderColor: isLightOn ? '#FFD700' : '#D4C4A8',
+              boxShadow: isLightOn ? '0 0 60px 30px hsl(var(--accent) / 0.6)' : 'none',
+            }}
+          />
+          {/* Shade body - elegant trapezoid with cream/off-white fabric */}
+          <div 
+            className="w-40 h-32 mx-auto transition-all duration-500 relative border-x-2 border-b-2"
+            style={{
+              background: isLightOn 
+                ? 'linear-gradient(180deg, #FFF8E7 0%, #FFE4B5 60%, #FFDAB9 100%)' 
+                : 'linear-gradient(180deg, #F5F5DC 0%, #E8DCC8 60%, #D4C4A8 100%)',
+              borderColor: isLightOn ? '#FFD700' : '#C4B098',
               clipPath: 'polygon(6% 0%, 94% 0%, 100% 100%, 0% 100%)',
-              borderRadius: '0 0 6px 6px'
+              borderRadius: '0 0 6px 6px',
+              boxShadow: isLightOn ? 'inset 0 0 40px rgba(255, 200, 100, 0.5)' : 'inset 0 2px 8px rgba(0,0,0,0.1)',
             }}
           >
             {/* Inner light glow */}
             {isLightOn && (
-              <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent" />
+              <div 
+                className="absolute inset-0" 
+                style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 100%)' }}
+              />
             )}
             
             {/* Fabric texture lines */}
-            <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 opacity-30">
               {[...Array(8)].map((_, i) => (
                 <div 
                   key={i} 
-                  className={`absolute h-full w-px ${isLightOn ? 'bg-white/30' : 'bg-foreground/20'}`}
-                  style={{ left: `${12 + i * 11}%` }}
+                  className="absolute h-full w-px"
+                  style={{ 
+                    left: `${12 + i * 11}%`,
+                    background: isLightOn ? 'rgba(255,255,255,0.4)' : 'rgba(139, 119, 101, 0.3)'
+                  }}
                 />
               ))}
             </div>
@@ -195,22 +283,22 @@ export function LampIntro({ onComplete }: LampIntroProps) {
             {/* Eyes */}
             <div className="flex gap-10 mb-3">
               <div 
-                className={`rounded-full transition-all duration-300 ${
-                  isLightOn 
-                    ? 'w-5 h-5 bg-primary-foreground shadow-lg' 
-                    : 'bg-foreground/70'
-                } ${isBlinking && !isLightOn ? 'h-1 w-5' : isLightOn ? 'w-5 h-5' : 'w-5 h-5'}`}
+                className="rounded-full transition-all duration-300"
                 style={{ 
+                  width: '20px',
+                  height: isBlinking && !isLightOn ? '4px' : '20px',
+                  background: isLightOn ? '#4A3728' : '#5D4E37',
+                  boxShadow: isLightOn ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                   animation: isLightOn ? 'happyEyes 0.5s ease-in-out 3' : 'none',
                 }}
               />
               <div 
-                className={`rounded-full transition-all duration-300 ${
-                  isLightOn 
-                    ? 'w-5 h-5 bg-primary-foreground shadow-lg' 
-                    : 'bg-foreground/70'
-                } ${isBlinking && !isLightOn ? 'h-1 w-5' : isLightOn ? 'w-5 h-5' : 'w-5 h-5'}`}
+                className="rounded-full transition-all duration-300"
                 style={{ 
+                  width: '20px',
+                  height: isBlinking && !isLightOn ? '4px' : '20px',
+                  background: isLightOn ? '#4A3728' : '#5D4E37',
+                  boxShadow: isLightOn ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                   animation: isLightOn ? 'happyEyes 0.5s ease-in-out 3' : 'none',
                   animationDelay: '0.1s',
                 }}
@@ -218,66 +306,90 @@ export function LampIntro({ onComplete }: LampIntroProps) {
             </div>
             {/* Mouth */}
             <div 
-              className={`transition-all duration-500 ${
-                isLightOn 
-                  ? 'w-12 h-6 border-b-4 border-primary-foreground rounded-b-full' 
-                  : 'w-8 h-1 bg-foreground/50 rounded-full'
-              }`}
+              className="transition-all duration-500"
+              style={{
+                width: isLightOn ? '48px' : '32px',
+                height: isLightOn ? '24px' : '4px',
+                borderBottom: isLightOn ? '4px solid #4A3728' : 'none',
+                borderRadius: isLightOn ? '0 0 24px 24px' : '4px',
+                background: isLightOn ? 'transparent' : '#5D4E37',
+              }}
             />
           </div>
         </div>
         
-        {/* Lamp neck - decorative connector */}
+        {/* Lamp neck - brass/gold connector */}
         <div 
-          className={`w-4 h-5 mx-auto transition-all duration-500 z-10 ${
-            isLightOn ? 'bg-primary' : 'bg-muted-foreground/50'
-          }`}
+          className="w-4 h-5 mx-auto transition-all duration-500 z-10"
+          style={{
+            background: isLightOn 
+              ? 'linear-gradient(180deg, #DAA520 0%, #B8860B 100%)' 
+              : 'linear-gradient(180deg, #8B7355 0%, #6B5344 100%)',
+          }}
         />
         
-        {/* Decorative knob */}
+        {/* Decorative brass knob */}
         <div 
-          className={`w-8 h-4 mx-auto rounded-full transition-all duration-500 z-10 shadow-md ${
-            isLightOn ? 'bg-primary' : 'bg-muted-foreground/60'
-          }`}
+          className="w-8 h-4 mx-auto rounded-full transition-all duration-500 z-10 shadow-md"
+          style={{
+            background: isLightOn 
+              ? 'linear-gradient(180deg, #FFD700 0%, #DAA520 100%)' 
+              : 'linear-gradient(180deg, #A0826D 0%, #8B7355 100%)',
+          }}
         />
         
-        {/* Tall elegant stand - upper section */}
+        {/* Tall elegant wooden stand - upper section */}
         <div 
-          className={`w-3 mx-auto transition-all duration-500 z-10 ${
-            isLightOn ? 'bg-gradient-to-b from-primary to-primary/80' : 'bg-gradient-to-b from-muted-foreground/60 to-muted-foreground/40'
-          }`}
-          style={{ height: '140px' }}
+          className="w-3 mx-auto transition-all duration-500 z-10"
+          style={{ 
+            height: '140px',
+            background: isLightOn 
+              ? 'linear-gradient(180deg, #8B4513 0%, #654321 50%, #5D3A1A 100%)' 
+              : 'linear-gradient(180deg, #6B4423 0%, #5A3A1D 50%, #4A3018 100%)',
+            boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
+          }}
         />
         
-        {/* Stand decorative middle piece */}
+        {/* Stand decorative wooden middle piece */}
         <div 
-          className={`w-6 h-6 mx-auto rounded-full transition-all duration-500 z-10 shadow-md ${
-            isLightOn ? 'bg-primary' : 'bg-muted-foreground/50'
-          }`}
+          className="w-6 h-6 mx-auto rounded-full transition-all duration-500 z-10 shadow-md"
+          style={{
+            background: isLightOn 
+              ? 'radial-gradient(circle at 30% 30%, #A0522D, #8B4513 50%, #654321)' 
+              : 'radial-gradient(circle at 30% 30%, #7B4423, #6B3A1D 50%, #5A3018)',
+          }}
         />
         
-        {/* Lower stand section */}
+        {/* Lower wooden stand section */}
         <div 
-          className={`w-3 mx-auto transition-all duration-500 z-10 ${
-            isLightOn ? 'bg-gradient-to-b from-primary/80 to-primary/60' : 'bg-gradient-to-b from-muted-foreground/50 to-muted-foreground/40'
-          }`}
-          style={{ height: '80px' }}
+          className="w-3 mx-auto transition-all duration-500 z-10"
+          style={{ 
+            height: '80px',
+            background: isLightOn 
+              ? 'linear-gradient(180deg, #654321 0%, #5D3A1A 50%, #4A2D0F 100%)' 
+              : 'linear-gradient(180deg, #5A3A1D 0%, #4A3018 50%, #3A2510 100%)',
+            boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
+          }}
         />
         
-        {/* Base connector */}
+        {/* Wooden base connector */}
         <div className="flex flex-col items-center z-10">
           <div 
-            className={`w-8 h-3 rounded-sm transition-all duration-500 shadow-sm ${
-              isLightOn ? 'bg-primary' : 'bg-muted-foreground/60'
-            }`}
+            className="w-8 h-3 rounded-sm transition-all duration-500 shadow-sm"
+            style={{
+              background: isLightOn 
+                ? 'linear-gradient(180deg, #8B4513, #654321)' 
+                : 'linear-gradient(180deg, #6B4423, #5A3A1D)',
+            }}
           />
-          {/* Main base */}
+          {/* Main wooden base */}
           <div 
-            className={`w-24 h-5 rounded-full transition-all duration-500 shadow-lg ${
-              isLightOn 
-                ? 'bg-gradient-to-r from-primary via-primary/90 to-primary' 
-                : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/60 to-muted-foreground/50'
-            }`}
+            className="w-24 h-5 rounded-full transition-all duration-500 shadow-lg"
+            style={{
+              background: isLightOn 
+                ? 'linear-gradient(90deg, #654321, #8B4513, #A0522D, #8B4513, #654321)' 
+                : 'linear-gradient(90deg, #4A3018, #6B4423, #7B4A28, #6B4423, #4A3018)',
+            }}
           />
         </div>
         
@@ -286,38 +398,62 @@ export function LampIntro({ onComplete }: LampIntroProps) {
           className={`absolute -right-20 top-24 z-20 ${isGrabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          onMouseLeave={() => setIsGrabbing(false)}
+          onMouseLeave={() => isGrabbing && setIsGrabbing(false)}
           onTouchStart={handleMouseDown}
           onTouchEnd={handleMouseUp}
           style={{
             transformOrigin: 'top center',
             animation: !isLightOn && !isPulling && !isGrabbing ? 'swing 2.5s ease-in-out infinite' : 'none',
-            transform: isGrabbing ? 'translateY(15px)' : isPulling ? 'translateY(30px)' : 'none',
-            transition: 'transform 0.2s ease-out',
+            transform: isGrabbing ? 'translateY(20px) rotate(3deg)' : isPulling ? 'translateY(40px) rotate(5deg)' : 'none',
+            transition: 'transform 0.15s ease-out',
           }}
         >
-          {/* Cord attachment point */}
-          <div className={`w-3 h-3 rounded-full mx-auto shadow-sm ${isLightOn ? 'bg-primary' : 'bg-muted-foreground/70'}`} />
-          {/* Cord */}
+          {/* Cord attachment point - brass */}
           <div 
-            className={`w-1 mx-auto transition-all duration-300 shadow-sm ${
-              isPulling ? 'h-28' : isGrabbing ? 'h-24' : 'h-20'
-            } ${isLightOn ? 'bg-primary/70' : 'bg-muted-foreground/60'}`}
+            className="w-3 h-3 rounded-full mx-auto shadow-sm"
+            style={{
+              background: isLightOn ? '#DAA520' : '#8B7355',
+            }}
           />
-          {/* Pull ball/tassel */}
+          {/* Cord - braided rope look */}
           <div 
-            className={`w-7 h-10 mx-auto rounded-b-full transition-all duration-200 shadow-lg ${
-              isLightOn 
-                ? 'bg-primary shadow-[0_0_25px_hsl(var(--primary)/0.6)]' 
+            className="w-1.5 mx-auto transition-all duration-200 rounded-full"
+            style={{
+              height: isPulling ? '120px' : isGrabbing ? '100px' : '80px',
+              background: isLightOn 
+                ? 'linear-gradient(180deg, #D4A574 0%, #C19660 50%, #B8860B 100%)' 
+                : 'linear-gradient(180deg, #A08060 0%, #8B7355 50%, #6B5344 100%)',
+              boxShadow: '1px 0 2px rgba(0,0,0,0.2)',
+            }}
+          />
+          {/* Pull ball/tassel - brass/gold */}
+          <div 
+            className="w-7 h-10 mx-auto rounded-b-full transition-all duration-200 shadow-lg"
+            style={{
+              background: isLightOn 
+                ? 'radial-gradient(circle at 30% 30%, #FFD700, #DAA520, #B8860B)' 
                 : isGrabbing
-                  ? 'bg-accent scale-110'
-                  : 'bg-muted-foreground/70 hover:bg-accent hover:scale-110'
-            }`}
+                  ? 'radial-gradient(circle at 30% 30%, hsl(var(--accent)), hsl(var(--accent) / 0.8))'
+                  : 'radial-gradient(circle at 30% 30%, #C19A6B, #A0826D, #8B7355)',
+              transform: isGrabbing ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: isLightOn 
+                ? '0 0 25px hsl(var(--primary) / 0.6)' 
+                : isGrabbing 
+                  ? '0 4px 12px rgba(0,0,0,0.3)' 
+                  : '0 2px 6px rgba(0,0,0,0.2)',
+            }}
           />
           {/* Pull indicator */}
           {!isLightOn && !isPulling && (
-            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-muted-foreground font-medium whitespace-nowrap">
-              {isGrabbing ? '↓ Pull!' : 'Grab'}
+            <div 
+              className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap px-2 py-1 rounded-full"
+              style={{
+                color: 'hsl(var(--foreground))',
+                background: 'hsl(var(--card) / 0.9)',
+                border: '1px solid hsl(var(--border))',
+              }}
+            >
+              {isGrabbing ? '↓ Pull!' : '👆 Grab'}
             </div>
           )}
         </div>
@@ -326,12 +462,19 @@ export function LampIntro({ onComplete }: LampIntroProps) {
       {/* Pull hint */}
       {showHint && !isLightOn && (
         <div className="absolute top-1/4 right-1/4 animate-bounce">
-          <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm px-4 py-2 rounded-full border border-border shadow-lg">
+          <div 
+            className="flex items-center gap-2 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg"
+            style={{
+              background: 'hsl(var(--card) / 0.9)',
+              border: '1px solid hsl(var(--border))',
+            }}
+          >
             <svg 
-              className="w-5 h-5 text-primary animate-pulse" 
+              className="w-5 h-5 animate-pulse" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
+              style={{ color: 'hsl(var(--primary))' }}
             >
               <path 
                 strokeLinecap="round" 
@@ -340,7 +483,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
                 d="M19 14l-7 7m0 0l-7-7m7 7V3" 
               />
             </svg>
-            <p className="text-foreground text-sm font-medium tracking-wide">
+            <p className="text-sm font-medium tracking-wide" style={{ color: 'hsl(var(--foreground))' }}>
               Pull the cord!
             </p>
           </div>
@@ -349,14 +492,20 @@ export function LampIntro({ onComplete }: LampIntroProps) {
       
       {/* Floor shadow */}
       <div 
-        className={`absolute bottom-16 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full blur-md transition-all duration-500 ${
-          isLightOn ? 'bg-accent/40' : 'bg-foreground/20'
-        }`}
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full blur-md transition-all duration-500"
+        style={{
+          background: isLightOn ? 'hsl(var(--accent) / 0.4)' : 'rgba(0,0,0,0.2)',
+        }}
       />
       
       {/* Floor glow when light is on */}
       {isLightOn && (
-        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-accent/30 to-transparent" />
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-48"
+          style={{
+            background: 'linear-gradient(to top, hsl(var(--accent) / 0.3), transparent)',
+          }}
+        />
       )}
       
       {/* Animations */}
@@ -374,6 +523,11 @@ export function LampIntro({ onComplete }: LampIntroProps) {
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-8px); }
+        }
+        
+        @keyframes sway {
+          0%, 100% { transform: rotate(-1deg); }
+          50% { transform: rotate(1deg); }
         }
         
         @keyframes pulseGlow {
