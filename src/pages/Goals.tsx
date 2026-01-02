@@ -1,20 +1,13 @@
-import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useGoals } from '@/hooks/useGoals';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { GoalProgressChart } from '@/components/goals/GoalProgressChart';
 import { CreateGoalDialog } from '@/components/goals/CreateGoalDialog';
-import { DailyTracker } from '@/components/goals/DailyTracker';
-import { GoalTargets } from '@/components/goals/GoalTargets';
-import { WeeklyProgressCharts } from '@/components/goals/WeeklyProgressCharts';
 import { StreakFreezeDialog } from '@/components/streak/StreakFreezeDialog';
-import { DailySpecialDialog } from '@/components/schedule/DailySpecialDialog';
-import { DateSelector } from '@/components/schedule/DateSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Target, Loader2, TrendingUp } from 'lucide-react';
 
 export default function Goals() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const { data: goals = [], isLoading } = useGoals();
 
   const activeGoals = goals.filter(g => !g.is_completed);
@@ -31,38 +24,24 @@ export default function Goals() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Goals</h1>
-              <p className="text-sm text-muted-foreground">Track your daily progress and long-term goals</p>
+              <p className="text-sm text-muted-foreground">Track your long-term goals</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <DailySpecialDialog selectedDate={selectedDate} />
             <StreakFreezeDialog />
             <CreateGoalDialog />
           </div>
         </div>
 
-        <Tabs defaultValue="daily">
+        <Tabs defaultValue="goals">
           <TabsList>
-            <TabsTrigger value="daily">Daily Tracking</TabsTrigger>
             <TabsTrigger value="goals">Long-term Goals</TabsTrigger>
             <TabsTrigger value="progress">
               <TrendingUp className="h-4 w-4 mr-1" />
               Progress
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="daily" className="space-y-4 mt-4">
-            <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
-            
-            {/* Weekly Progress Charts */}
-            <WeeklyProgressCharts />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <DailyTracker selectedDate={selectedDate} />
-              <GoalTargets selectedDate={selectedDate} />
-            </div>
-          </TabsContent>
 
           <TabsContent value="goals" className="mt-4">
             {isLoading ? (

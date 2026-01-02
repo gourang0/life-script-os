@@ -9,6 +9,7 @@ import { TopHabits } from '@/components/habits/TopHabits';
 import { AddHabitDialog } from '@/components/habits/AddHabitDialog';
 import { WeeklyChart } from '@/components/habits/WeeklyChart';
 import { StreakCounter } from '@/components/habits/StreakCounter';
+import { DailyMetricsTracker } from '@/components/schedule/DailyMetricsTracker';
 import { Gamepad2, Calendar, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,6 +103,9 @@ export default function Schedule() {
           />
           <TopHabits habits={habits} />
         </div>
+
+        {/* Daily Metrics Tracker */}
+        <DailyMetricsTracker />
 
         {/* Main Habit Grid */}
         <HabitGrid 
