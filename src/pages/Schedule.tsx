@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useHabitTracker } from '@/hooks/useHabitTracker';
+import { useHabitExceptionTracker } from '@/hooks/useHabitExceptionTracker';
 import { LevelProgress } from '@/components/habits/LevelProgress';
 import { OverallProgress } from '@/components/habits/OverallProgress';
 import { HabitGrid } from '@/components/habits/HabitGrid';
@@ -30,6 +31,9 @@ export default function Schedule() {
     getStreak,
     getWeeklyData,
   } = useHabitTracker();
+
+  // Track missed habits and auto-log exceptions for streak breaks
+  useHabitExceptionTracker({ habits, getStreak });
 
   const monthName = new Date(currentMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' });
 
