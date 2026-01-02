@@ -29,6 +29,8 @@ import { toast } from 'sonner';
 
 interface AppLayoutProps {
   children: ReactNode;
+  sidebarCollapsed?: boolean;
+  onSidebarToggle?: () => void;
 }
 
 const navItems = [
@@ -42,7 +44,7 @@ const navItems = [
   { path: '/profile', label: 'Profile', icon: User },
 ];
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, sidebarCollapsed = false, onSidebarToggle }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { data: profile } = useProfile();
@@ -80,8 +82,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-50 bg-card border-r border-border transform transition-all duration-300 ease-in-out lg:static lg:z-auto",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          sidebarCollapsed ? "lg:w-0 lg:border-0 lg:overflow-hidden" : "lg:translate-x-0 w-64"
         )}
       >
         <div className="flex flex-col h-full">

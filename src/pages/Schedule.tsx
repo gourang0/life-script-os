@@ -15,7 +15,7 @@ import { Navigate } from 'react-router-dom';
 
 export default function Schedule() {
   const { user, loading } = useAuth();
-  const [showSidePanels, setShowSidePanels] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const {
     habits,
     progress,
@@ -46,7 +46,7 @@ export default function Schedule() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout sidebarCollapsed={sidebarCollapsed} onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -64,18 +64,18 @@ export default function Schedule() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowSidePanels(!showSidePanels)}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="flex items-center gap-2"
             >
-              {showSidePanels ? (
+              {sidebarCollapsed ? (
                 <>
-                  <PanelLeftClose className="w-4 h-4" />
-                  <span className="hidden sm:inline">Hide Stats</span>
+                  <PanelLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Show Menu</span>
                 </>
               ) : (
                 <>
-                  <PanelLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Show Stats</span>
+                  <PanelLeftClose className="w-4 h-4" />
+                  <span className="hidden sm:inline">Hide Menu</span>
                 </>
               )}
             </Button>
@@ -87,35 +87,28 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* Main Content - Full width habit grid with optional side stats */}
-        <div className="space-y-6">
-          {/* Stats Row - shown when panels are visible */}
-          {showSidePanels && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <LevelProgress progress={progress} />
-              <StreakCounter streak={getStreak()} />
-              <OverallProgress 
-                completed={getTotalCompleted()} 
-                goal={getTotalGoal()} 
-                percentage={getOverallProgress()} 
-              />
-              <TopHabits habits={habits} />
-            </div>
-          )}
-
-          {/* Main Habit Grid - Takes full available width */}
-          <div className="w-full">
-            <HabitGrid 
-              habits={habits}
-              daysInMonth={getDaysInMonth()}
-              onToggle={toggleHabit}
-              onDelete={removeHabit}
-            />
-          </div>
-          
-          {/* Weekly Chart */}
-          <WeeklyChart data={getWeeklyData()} />
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <LevelProgress progress={progress} />
+          <StreakCounter streak={getStreak()} />
+          <OverallProgress 
+            completed={getTotalCompleted()} 
+            goal={getTotalGoal()} 
+            percentage={getOverallProgress()} 
+          />
+          <TopHabits habits={habits} />
         </div>
+
+        {/* Main Habit Grid */}
+        <HabitGrid 
+          habits={habits}
+          daysInMonth={getDaysInMonth()}
+          onToggle={toggleHabit}
+          onDelete={removeHabit}
+        />
+        
+        {/* Weekly Chart */}
+        <WeeklyChart data={getWeeklyData()} />
       </div>
     </AppLayout>
   );
