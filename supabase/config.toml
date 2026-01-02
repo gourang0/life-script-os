@@ -1,19 +1,19 @@
 project_id = "lcgsigoeywfigspxlymy"
 
 [functions.ai-motivation]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-daily-summary]
-verify_jwt = true
+verify_jwt = false
 
 [functions.streak-freeze-feedback]
-verify_jwt = true
+verify_jwt = false
 
 [functions.analyze-nutrition]
-verify_jwt = true
+verify_jwt = false
 
 [functions.lookup-nutrition]
-verify_jwt = true
+verify_jwt = false
 
 [functions.suggest-calorie-goal]
-verify_jwt = true
+verify_jwt = false
