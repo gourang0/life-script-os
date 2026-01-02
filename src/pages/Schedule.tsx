@@ -15,7 +15,7 @@ import { Navigate } from 'react-router-dom';
 
 export default function Schedule() {
   const { user, loading } = useAuth();
-  const [showPanels, setShowPanels] = useState(true);
+  const [showSidePanels, setShowSidePanels] = useState(true);
   const {
     habits,
     progress,
@@ -64,18 +64,18 @@ export default function Schedule() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowPanels(!showPanels)}
+              onClick={() => setShowSidePanels(!showSidePanels)}
               className="flex items-center gap-2"
             >
-              {showPanels ? (
+              {showSidePanels ? (
                 <>
                   <PanelLeftClose className="w-4 h-4" />
-                  <span className="hidden sm:inline">Hide Panels</span>
+                  <span className="hidden sm:inline">Hide Stats</span>
                 </>
               ) : (
                 <>
                   <PanelLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Show Panels</span>
+                  <span className="hidden sm:inline">Show Stats</span>
                 </>
               )}
             </Button>
@@ -87,11 +87,11 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className={`grid gap-6 ${showPanels ? 'xl:grid-cols-[250px_1fr_250px]' : ''}`}>
-          {/* Left Panel */}
-          {showPanels && (
-            <aside className="space-y-4 order-2 xl:order-1">
+        {/* Main Content - Full width habit grid with optional side stats */}
+        <div className="space-y-6">
+          {/* Stats Row - shown when panels are visible */}
+          {showSidePanels && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <LevelProgress progress={progress} />
               <StreakCounter streak={getStreak()} />
               <OverallProgress 
@@ -99,28 +99,22 @@ export default function Schedule() {
                 goal={getTotalGoal()} 
                 percentage={getOverallProgress()} 
               />
-            </aside>
+              <TopHabits habits={habits} />
+            </div>
           )}
 
-          {/* Main Habit Grid */}
-          <main className={`space-y-6 ${showPanels ? 'order-1 xl:order-2' : ''}`}>
+          {/* Main Habit Grid - Takes full available width */}
+          <div className="w-full">
             <HabitGrid 
               habits={habits}
               daysInMonth={getDaysInMonth()}
               onToggle={toggleHabit}
               onDelete={removeHabit}
             />
-            
-            {/* Weekly Chart */}
-            <WeeklyChart data={getWeeklyData()} />
-          </main>
-
-          {/* Right Panel */}
-          {showPanels && (
-            <aside className="order-3">
-              <TopHabits habits={habits} />
-            </aside>
-          )}
+          </div>
+          
+          {/* Weekly Chart */}
+          <WeeklyChart data={getWeeklyData()} />
         </div>
       </div>
     </AppLayout>
