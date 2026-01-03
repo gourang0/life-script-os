@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useDailySummaries, useExceptionAnalytics } from '@/hooks/useAnalytics';
 import { useGenerateDailySummary } from '@/hooks/useGenerateDailySummary';
+import { useHabitTracker } from '@/hooks/useHabitTracker';
 import { DisciplineChart } from '@/components/analytics/DisciplineChart';
 import { ProductivityChart } from '@/components/analytics/ProductivityChart';
 import { ExceptionPatternsChart } from '@/components/analytics/ExceptionPatternsChart';
 import { XPChart } from '@/components/analytics/XPChart';
 import { AnalyticsSummary } from '@/components/analytics/AnalyticsSummary';
+import { TopHabits } from '@/components/habits/TopHabits';
+import { WeeklyChart } from '@/components/habits/WeeklyChart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { BarChart3, RefreshCw } from 'lucide-react';
@@ -20,6 +23,7 @@ export default function Analytics() {
   const { data: summaries = [], isLoading: summariesLoading, refetch } = useDailySummaries(days);
   const { data: exceptions = [], isLoading: exceptionsLoading } = useExceptionAnalytics(days);
   const generateSummary = useGenerateDailySummary();
+  const { habits, getWeeklyData } = useHabitTracker();
 
   const isLoading = summariesLoading || exceptionsLoading;
 
@@ -83,6 +87,12 @@ export default function Analytics() {
           <>
             {/* Summary Stats */}
             <AnalyticsSummary summaries={summaries} exceptionCount={exceptions.length} />
+
+            {/* Habit Stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TopHabits habits={habits} />
+              <WeeklyChart data={getWeeklyData()} />
+            </div>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

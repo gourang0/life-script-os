@@ -36,7 +36,6 @@ interface AppLayoutProps {
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/goals', label: 'Goals', icon: Goal },
-  { path: '/tasks', label: 'Tasks', icon: CheckSquare },
   { path: '/schedule', label: 'Habit Quest', icon: Calendar },
   { path: '/health', label: 'Health', icon: Heart },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
