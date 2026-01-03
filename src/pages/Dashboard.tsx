@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasks } from '@/hooks/useTasks';
-import { useDailyGoal } from '@/hooks/useDailyGoals';
+import { useDailyGoal, useUpsertDailyGoal } from '@/hooks/useDailyGoals';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
@@ -14,9 +14,12 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon, ChevronDown, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -25,10 +28,48 @@ export default function Dashboard() {
   const { data: tasks } = useTasks();
   const today = format(new Date(), 'yyyy-MM-dd');
   const { data: dailyGoals } = useDailyGoal(today);
+  const { mutateAsync: upsertDailyGoal } = useUpsertDailyGoal();
+  
+  const [isMetricsOpen, setIsMetricsOpen] = useState(false);
+  const [stepsTarget, setStepsTarget] = useState('0');
+  const [stepsActual, setStepsActual] = useState('0');
+  const [workTarget, setWorkTarget] = useState('0');
+  const [workActual, setWorkActual] = useState('0');
+  const [sleepTarget, setSleepTarget] = useState('0');
+  const [sleepActual, setSleepActual] = useState('0');
+
+  useEffect(() => {
+    if (dailyGoals) {
+      setStepsTarget(String(dailyGoals.steps_target || 0));
+      setStepsActual(String(dailyGoals.steps_actual || 0));
+      setWorkTarget(String(dailyGoals.work_hours_target || 0));
+      setWorkActual(String(dailyGoals.work_hours_actual || 0));
+      setSleepTarget(String(dailyGoals.sleep_hours_target || 0));
+      setSleepActual(String(dailyGoals.sleep_hours_actual || 0));
+    }
+  }, [dailyGoals]);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
   }, [user, authLoading, navigate]);
+
+  const handleSaveMetrics = async () => {
+    try {
+      await upsertDailyGoal({
+        goal_date: today,
+        steps_target: parseInt(stepsTarget) || 0,
+        steps_actual: parseInt(stepsActual) || 0,
+        work_hours_target: parseInt(workTarget) || 0,
+        work_hours_actual: parseInt(workActual) || 0,
+        sleep_hours_target: parseInt(sleepTarget) || 0,
+        sleep_hours_actual: parseInt(sleepActual) || 0,
+      });
+      toast({ title: 'Metrics saved successfully!' });
+      setIsMetricsOpen(false);
+    } catch {
+      toast({ title: 'Failed to save metrics', variant: 'destructive' });
+    }
+  };
 
   if (authLoading || profileLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,6 +85,9 @@ export default function Dashboard() {
   const stepsProgress = dailyGoals?.steps_target ? ((dailyGoals.steps_actual || 0) / dailyGoals.steps_target) * 100 : 0;
   const workProgress = dailyGoals?.work_hours_target ? ((dailyGoals.work_hours_actual || 0) / dailyGoals.work_hours_target) * 100 : 0;
   const sleepProgress = dailyGoals?.sleep_hours_target ? ((dailyGoals.sleep_hours_actual || 0) / dailyGoals.sleep_hours_target) * 100 : 0;
+
+  const stepOptions = ['0', '1000', '2000', '3000', '4000', '5000', '6000', '7000', '8000', '9000', '10000', '12000', '15000', '20000'];
+  const hourOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 
   return (
     <AppLayout>
@@ -67,14 +111,8 @@ export default function Dashboard() {
 
         {/* Daily Metrics Section */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary" />
-              Daily Metrics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
               {/* Steps */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -117,9 +155,133 @@ export default function Dashboard() {
                 <Progress value={Math.min(sleepProgress, 100)} className="h-2" />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-4 text-center">
-              Set and track daily metrics in <Link to="/schedule" className="text-primary hover:underline">Habit Quest</Link>
-            </p>
+
+            <Collapsible open={isMetricsOpen} onOpenChange={setIsMetricsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full flex items-center justify-center gap-2 text-primary hover:text-primary/80">
+                  <Settings className="w-4 h-4" />
+                  Set Daily Metrics
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isMetricsOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Steps Settings */}
+                  <div className="space-y-3 p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Footprints className="w-4 h-4 text-primary" />
+                      Steps
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Target</label>
+                        <Select value={stepsTarget} onValueChange={setStepsTarget}>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {stepOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>{parseInt(opt).toLocaleString()}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Actual</label>
+                        <Select value={stepsActual} onValueChange={setStepsActual}>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {stepOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>{parseInt(opt).toLocaleString()}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Work Hours Settings */}
+                  <div className="space-y-3 p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Briefcase className="w-4 h-4 text-chart-2" />
+                      Work Hours
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Target</label>
+                        <Select value={workTarget} onValueChange={setWorkTarget}>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {hourOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}h</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Actual</label>
+                        <Select value={workActual} onValueChange={setWorkActual}>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {hourOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}h</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sleep Hours Settings */}
+                  <div className="space-y-3 p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Moon className="w-4 h-4 text-chart-3" />
+                      Sleep Hours
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Target</label>
+                        <Select value={sleepTarget} onValueChange={setSleepTarget}>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {hourOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}h</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Actual</label>
+                        <Select value={sleepActual} onValueChange={setSleepActual}>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {hourOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}h</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button onClick={handleSaveMetrics}>
+                    OK
+                  </Button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
 
