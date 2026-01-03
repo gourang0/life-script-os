@@ -500,6 +500,36 @@ export type Database = {
         }
         Relationships: []
       }
+      reminders: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_completed: boolean
+          priority: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          priority?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          priority?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       routines: {
         Row: {
           category: string

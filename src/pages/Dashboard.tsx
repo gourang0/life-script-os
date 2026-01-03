@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasks } from '@/hooks/useTasks';
 import { useDailyGoal, useUpsertDailyGoal } from '@/hooks/useDailyGoals';
+import { useReminders, useCreateReminder, useDeleteReminder, useUpdateReminder } from '@/hooks/useReminders';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
@@ -16,7 +17,9 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon, ChevronDown, Settings } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon, ChevronDown, Settings, Bell, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -29,23 +32,37 @@ export default function Dashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
   const { data: dailyGoals } = useDailyGoal(today);
   const { mutateAsync: upsertDailyGoal } = useUpsertDailyGoal();
+  const { data: reminders } = useReminders();
+  const { mutateAsync: createReminder } = useCreateReminder();
+  const { mutateAsync: deleteReminder } = useDeleteReminder();
+  const { mutateAsync: updateReminder } = useUpdateReminder();
   
   const [isMetricsOpen, setIsMetricsOpen] = useState(false);
-  const [stepsTarget, setStepsTarget] = useState('0');
-  const [stepsActual, setStepsActual] = useState('0');
+  const [stepsTarget, setStepsTarget] = useState('5000');
+  const [stepsActual, setStepsActual] = useState(0);
+  const [stepsManual, setStepsManual] = useState('0');
   const [workTarget, setWorkTarget] = useState('0');
-  const [workActual, setWorkActual] = useState('0');
+  const [workActual, setWorkActual] = useState(0);
+  const [workManual, setWorkManual] = useState('0');
   const [sleepTarget, setSleepTarget] = useState('0');
-  const [sleepActual, setSleepActual] = useState('0');
+  const [sleepActual, setSleepActual] = useState(0);
+  const [sleepManual, setSleepManual] = useState('0');
+  
+  const [isAddingReminder, setIsAddingReminder] = useState(false);
+  const [newReminderContent, setNewReminderContent] = useState('');
+  const [newReminderPriority, setNewReminderPriority] = useState('2');
 
   useEffect(() => {
     if (dailyGoals) {
-      setStepsTarget(String(dailyGoals.steps_target || 0));
-      setStepsActual(String(dailyGoals.steps_actual || 0));
+      setStepsTarget(String(dailyGoals.steps_target || 5000));
+      setStepsActual(dailyGoals.steps_actual || 0);
+      setStepsManual(String(dailyGoals.steps_actual || 0));
       setWorkTarget(String(dailyGoals.work_hours_target || 0));
-      setWorkActual(String(dailyGoals.work_hours_actual || 0));
+      setWorkActual(dailyGoals.work_hours_actual || 0);
+      setWorkManual(String(dailyGoals.work_hours_actual || 0));
       setSleepTarget(String(dailyGoals.sleep_hours_target || 0));
-      setSleepActual(String(dailyGoals.sleep_hours_actual || 0));
+      setSleepActual(dailyGoals.sleep_hours_actual || 0);
+      setSleepManual(String(dailyGoals.sleep_hours_actual || 0));
     }
   }, [dailyGoals]);
 
@@ -58,16 +75,48 @@ export default function Dashboard() {
       await upsertDailyGoal({
         goal_date: today,
         steps_target: parseInt(stepsTarget) || 0,
-        steps_actual: parseInt(stepsActual) || 0,
+        steps_actual: stepsActual,
         work_hours_target: parseInt(workTarget) || 0,
-        work_hours_actual: parseInt(workActual) || 0,
+        work_hours_actual: workActual,
         sleep_hours_target: parseInt(sleepTarget) || 0,
-        sleep_hours_actual: parseInt(sleepActual) || 0,
+        sleep_hours_actual: sleepActual,
       });
       toast({ title: 'Metrics saved successfully!' });
       setIsMetricsOpen(false);
     } catch {
       toast({ title: 'Failed to save metrics', variant: 'destructive' });
+    }
+  };
+
+  const handleAddReminder = async () => {
+    if (!newReminderContent.trim()) return;
+    try {
+      await createReminder({
+        content: newReminderContent.trim(),
+        priority: parseInt(newReminderPriority),
+      });
+      setNewReminderContent('');
+      setNewReminderPriority('2');
+      setIsAddingReminder(false);
+      toast({ title: 'Reminder added!' });
+    } catch {
+      toast({ title: 'Failed to add reminder', variant: 'destructive' });
+    }
+  };
+
+  const handleCompleteReminder = async (id: string) => {
+    try {
+      await updateReminder({ id, is_completed: true });
+    } catch {
+      toast({ title: 'Failed to complete reminder', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteReminder = async (id: string) => {
+    try {
+      await deleteReminder(id);
+    } catch {
+      toast({ title: 'Failed to delete reminder', variant: 'destructive' });
     }
   };
 
@@ -86,8 +135,20 @@ export default function Dashboard() {
   const workProgress = dailyGoals?.work_hours_target ? ((dailyGoals.work_hours_actual || 0) / dailyGoals.work_hours_target) * 100 : 0;
   const sleepProgress = dailyGoals?.sleep_hours_target ? ((dailyGoals.sleep_hours_actual || 0) / dailyGoals.sleep_hours_target) * 100 : 0;
 
-  const stepOptions = ['0', '1000', '2000', '3000', '4000', '5000', '6000', '7000', '8000', '9000', '10000', '12000', '15000', '20000'];
+  const stepTargetOptions = ['5000', '6000', '7000', '8000', '9000', '10000', '12000', '15000', '18000', '20000', '22000', '25000'];
   const hourOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+  const getPriorityColor = (priority: number) => {
+    if (priority >= 3) return 'border-l-destructive bg-destructive/5';
+    if (priority === 2) return 'border-l-chart-4 bg-chart-4/5';
+    return 'border-l-muted-foreground bg-muted/30';
+  };
+
+  const getPriorityLabel = (priority: number) => {
+    if (priority >= 3) return 'High';
+    if (priority === 2) return 'Medium';
+    return 'Low';
+  };
 
   return (
     <AppLayout>
@@ -108,6 +169,87 @@ export default function Dashboard() {
           <StatsCard title="Pending Tasks" value={pendingTasks.length} icon={<Clock className="w-6 h-6" />} />
           <StatsCard title="Current Streak" value={`${profile?.current_streak || 0} days`} icon={<Flame className="w-6 h-6" />} variant="warning" />
         </div>
+
+        {/* Reminders Section */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              Reminders
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsAddingReminder(!isAddingReminder)}
+            >
+              {isAddingReminder ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {isAddingReminder && (
+              <div className="flex gap-2 mb-4">
+                <Input
+                  placeholder="Enter reminder..."
+                  value={newReminderContent}
+                  onChange={(e) => setNewReminderContent(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddReminder()}
+                  className="flex-1"
+                />
+                <Select value={newReminderPriority} onValueChange={setNewReminderPriority}>
+                  <SelectTrigger className="w-28 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="1">Low</SelectItem>
+                    <SelectItem value="2">Medium</SelectItem>
+                    <SelectItem value="3">High</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAddReminder} size="sm">Add</Button>
+              </div>
+            )}
+            
+            {reminders && reminders.length > 0 ? (
+              <div className="space-y-2">
+                {reminders.map((reminder) => (
+                  <div
+                    key={reminder.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border-l-4 ${getPriorityColor(reminder.priority)}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {getPriorityLabel(reminder.priority)}
+                      </span>
+                      <span className="text-sm">{reminder.content}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleCompleteReminder(reminder.id)}
+                      >
+                        <CheckCircle className="w-4 h-4 text-primary" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleDeleteReminder(reminder.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4 text-sm">
+                No reminders yet. Add one to stay on track!
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Daily Metrics Section */}
         <Card>
@@ -172,7 +314,7 @@ export default function Dashboard() {
                       <Footprints className="w-4 h-4 text-primary" />
                       Steps
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3">
                       <div>
                         <label className="text-xs text-muted-foreground">Target</label>
                         <Select value={stepsTarget} onValueChange={setStepsTarget}>
@@ -180,24 +322,34 @@ export default function Dashboard() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-popover">
-                            {stepOptions.map(opt => (
+                            {stepTargetOptions.map(opt => (
                               <SelectItem key={opt} value={opt}>{parseInt(opt).toLocaleString()}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Actual</label>
-                        <Select value={stepsActual} onValueChange={setStepsActual}>
-                          <SelectTrigger className="bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover">
-                            {stepOptions.map(opt => (
-                              <SelectItem key={opt} value={opt}>{parseInt(opt).toLocaleString()}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <label className="text-xs text-muted-foreground">Actual: {stepsActual.toLocaleString()}</label>
+                        <Slider
+                          value={[stepsActual]}
+                          onValueChange={(v) => {
+                            setStepsActual(v[0]);
+                            setStepsManual(String(v[0]));
+                          }}
+                          max={30000}
+                          step={500}
+                          className="mt-2"
+                        />
+                        <Input
+                          type="number"
+                          value={stepsManual}
+                          onChange={(e) => {
+                            setStepsManual(e.target.value);
+                            setStepsActual(parseInt(e.target.value) || 0);
+                          }}
+                          className="mt-2 bg-background"
+                          placeholder="Manual entry"
+                        />
                       </div>
                     </div>
                   </div>
@@ -208,7 +360,7 @@ export default function Dashboard() {
                       <Briefcase className="w-4 h-4 text-chart-2" />
                       Work Hours
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3">
                       <div>
                         <label className="text-xs text-muted-foreground">Target</label>
                         <Select value={workTarget} onValueChange={setWorkTarget}>
@@ -223,17 +375,27 @@ export default function Dashboard() {
                         </Select>
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Actual</label>
-                        <Select value={workActual} onValueChange={setWorkActual}>
-                          <SelectTrigger className="bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover">
-                            {hourOptions.map(opt => (
-                              <SelectItem key={opt} value={opt}>{opt}h</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <label className="text-xs text-muted-foreground">Actual: {workActual}h</label>
+                        <Slider
+                          value={[workActual]}
+                          onValueChange={(v) => {
+                            setWorkActual(v[0]);
+                            setWorkManual(String(v[0]));
+                          }}
+                          max={16}
+                          step={0.5}
+                          className="mt-2"
+                        />
+                        <Input
+                          type="number"
+                          value={workManual}
+                          onChange={(e) => {
+                            setWorkManual(e.target.value);
+                            setWorkActual(parseFloat(e.target.value) || 0);
+                          }}
+                          className="mt-2 bg-background"
+                          placeholder="Manual entry"
+                        />
                       </div>
                     </div>
                   </div>
@@ -244,7 +406,7 @@ export default function Dashboard() {
                       <Moon className="w-4 h-4 text-chart-3" />
                       Sleep Hours
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3">
                       <div>
                         <label className="text-xs text-muted-foreground">Target</label>
                         <Select value={sleepTarget} onValueChange={setSleepTarget}>
@@ -259,17 +421,27 @@ export default function Dashboard() {
                         </Select>
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Actual</label>
-                        <Select value={sleepActual} onValueChange={setSleepActual}>
-                          <SelectTrigger className="bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover">
-                            {hourOptions.map(opt => (
-                              <SelectItem key={opt} value={opt}>{opt}h</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <label className="text-xs text-muted-foreground">Actual: {sleepActual}h</label>
+                        <Slider
+                          value={[sleepActual]}
+                          onValueChange={(v) => {
+                            setSleepActual(v[0]);
+                            setSleepManual(String(v[0]));
+                          }}
+                          max={16}
+                          step={0.5}
+                          className="mt-2"
+                        />
+                        <Input
+                          type="number"
+                          value={sleepManual}
+                          onChange={(e) => {
+                            setSleepManual(e.target.value);
+                            setSleepActual(parseFloat(e.target.value) || 0);
+                          }}
+                          className="mt-2 bg-background"
+                          placeholder="Manual entry"
+                        />
                       </div>
                     </div>
                   </div>
