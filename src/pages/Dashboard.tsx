@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasks } from '@/hooks/useTasks';
+import { useDailyGoal } from '@/hooks/useDailyGoals';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
@@ -12,13 +13,18 @@ import { UrgentGoalCountdown } from '@/components/dashboard/UrgentGoalCountdown'
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Target, CheckCircle, Clock, Flame, Plus } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
+
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: tasks } = useTasks();
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const { data: dailyGoals } = useDailyGoal(today);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
@@ -30,10 +36,14 @@ export default function Dashboard() {
     </div>;
   }
 
-  const today = new Date().toISOString().split('T')[0];
   const todayTasks = tasks?.filter(t => t.scheduled_date === today) || [];
   const completedToday = todayTasks.filter(t => t.is_completed).length;
   const pendingTasks = tasks?.filter(t => !t.is_completed) || [];
+
+  // Daily metrics calculations
+  const stepsProgress = dailyGoals?.steps_target ? ((dailyGoals.steps_actual || 0) / dailyGoals.steps_target) * 100 : 0;
+  const workProgress = dailyGoals?.work_hours_target ? ((dailyGoals.work_hours_actual || 0) / dailyGoals.work_hours_target) * 100 : 0;
+  const sleepProgress = dailyGoals?.sleep_hours_target ? ((dailyGoals.sleep_hours_actual || 0) / dailyGoals.sleep_hours_target) * 100 : 0;
 
   return (
     <AppLayout>
@@ -54,6 +64,64 @@ export default function Dashboard() {
           <StatsCard title="Pending Tasks" value={pendingTasks.length} icon={<Clock className="w-6 h-6" />} />
           <StatsCard title="Current Streak" value={`${profile?.current_streak || 0} days`} icon={<Flame className="w-6 h-6" />} variant="warning" />
         </div>
+
+        {/* Daily Metrics Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Daily Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Steps */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Footprints className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Steps</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {dailyGoals?.steps_actual?.toLocaleString() || 0} / {dailyGoals?.steps_target?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <Progress value={Math.min(stepsProgress, 100)} className="h-2" />
+              </div>
+
+              {/* Work Hours */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-chart-2" />
+                    <span className="text-sm font-medium">Work Hours</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {dailyGoals?.work_hours_actual || 0}h / {dailyGoals?.work_hours_target || 0}h
+                  </span>
+                </div>
+                <Progress value={Math.min(workProgress, 100)} className="h-2" />
+              </div>
+
+              {/* Sleep Hours */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Moon className="w-4 h-4 text-chart-3" />
+                    <span className="text-sm font-medium">Sleep Hours</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {dailyGoals?.sleep_hours_actual || 0}h / {dailyGoals?.sleep_hours_target || 0}h
+                  </span>
+                </div>
+                <Progress value={Math.min(sleepProgress, 100)} className="h-2" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Set and track daily metrics in <Link to="/schedule" className="text-primary hover:underline">Habit Quest</Link>
+            </p>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">

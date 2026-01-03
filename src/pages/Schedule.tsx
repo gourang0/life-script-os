@@ -2,14 +2,8 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useHabitTracker } from '@/hooks/useHabitTracker';
 import { useHabitExceptionTracker } from '@/hooks/useHabitExceptionTracker';
-import { LevelProgress } from '@/components/habits/LevelProgress';
-import { OverallProgress } from '@/components/habits/OverallProgress';
 import { HabitGrid } from '@/components/habits/HabitGrid';
-import { TopHabits } from '@/components/habits/TopHabits';
 import { AddHabitDialog } from '@/components/habits/AddHabitDialog';
-import { WeeklyChart } from '@/components/habits/WeeklyChart';
-import { StreakCounter } from '@/components/habits/StreakCounter';
-import { DailyMetricsTracker } from '@/components/schedule/DailyMetricsTracker';
 import { Gamepad2, Calendar, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,17 +14,12 @@ export default function Schedule() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const {
     habits,
-    progress,
     currentMonth,
     toggleHabit,
     addHabit,
     removeHabit,
     getDaysInMonth,
-    getTotalCompleted,
-    getTotalGoal,
-    getOverallProgress,
     getStreak,
-    getWeeklyData,
   } = useHabitTracker();
 
   // Track missed habits and auto-log exceptions for streak breaks
@@ -92,21 +81,6 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <LevelProgress progress={progress} />
-          <StreakCounter streak={getStreak()} />
-          <OverallProgress 
-            completed={getTotalCompleted()} 
-            goal={getTotalGoal()} 
-            percentage={getOverallProgress()} 
-          />
-          <TopHabits habits={habits} />
-        </div>
-
-        {/* Daily Metrics Tracker */}
-        <DailyMetricsTracker />
-
         {/* Main Habit Grid */}
         <HabitGrid 
           habits={habits}
@@ -114,9 +88,6 @@ export default function Schedule() {
           onToggle={toggleHabit}
           onDelete={removeHabit}
         />
-        
-        {/* Weekly Chart */}
-        <WeeklyChart data={getWeeklyData()} />
       </div>
     </AppLayout>
   );
