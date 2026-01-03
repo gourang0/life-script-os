@@ -7,6 +7,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
 import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
 import { AvatarPicker } from '@/components/profile/AvatarPicker';
+import { ColorThemePicker } from '@/components/profile/ColorThemePicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +71,8 @@ export default function Profile() {
             </CardContent>
           </Card>
         </div>
+
+        <ColorThemePicker />
 
         <Card>
           <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>

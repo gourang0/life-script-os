@@ -19,7 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon, ChevronDown, Settings, Bell, Trash2, X } from 'lucide-react';
+import { Target, CheckCircle, Clock, Flame, Plus, Footprints, Briefcase, Moon, ChevronDown, Settings, Bell, Trash2, X, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -82,11 +82,21 @@ export default function Dashboard() {
         sleep_hours_actual: sleepActual,
       });
       toast({ title: 'Metrics saved successfully!' });
-      setIsMetricsOpen(false);
     } catch {
       toast({ title: 'Failed to save metrics', variant: 'destructive' });
     }
   };
+
+  // Auto-save metrics when values change
+  useEffect(() => {
+    if (dailyGoals) {
+      const timeoutId = setTimeout(() => {
+        handleSaveMetrics();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepsActual, workActual, sleepActual, stepsTarget, workTarget, sleepTarget]);
 
   const handleAddReminder = async () => {
     if (!newReminderContent.trim()) return;
@@ -163,12 +173,48 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard title="Today's Tasks" value={`${completedToday}/${todayTasks.length}`} icon={<Target className="w-6 h-6" />} variant="primary" />
-          <StatsCard title="Total Completed" value={profile?.total_tasks_completed || 0} icon={<CheckCircle className="w-6 h-6" />} variant="success" />
-          <StatsCard title="Pending Tasks" value={pendingTasks.length} icon={<Clock className="w-6 h-6" />} />
-          <StatsCard title="Current Streak" value={`${profile?.current_streak || 0} days`} icon={<Flame className="w-6 h-6" />} variant="warning" />
-        </div>
+        {/* Today's Tasks - Moved to top */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Today's Tasks</CardTitle>
+            <Link to="/tasks"><Button variant="ghost" size="sm">View All</Button></Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {todayTasks.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No tasks scheduled for today. <Link to="/tasks" className="text-primary hover:underline">Add one!</Link></p>
+            ) : (
+              todayTasks.slice(0, 5).map(task => (
+                <div key={task.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className={`w-1 h-8 rounded-full ${
+                      task.priority === 'high' ? 'bg-destructive' :
+                      task.priority === 'medium' ? 'bg-chart-2' : 'bg-chart-3'
+                    }`} />
+                    <div className="flex-1">
+                      <h3 className={`font-medium ${task.is_completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        {task.title}
+                      </h3>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {task.is_completed ? (
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-primary" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center">
+                        <X className="w-4 h-4 text-destructive" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
 
         {/* Reminders Section */}
         <Card>
@@ -447,11 +493,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <Button onClick={handleSaveMetrics}>
-                    OK
-                  </Button>
-                </div>
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
@@ -471,19 +512,6 @@ export default function Dashboard() {
 
           <div className="lg:col-span-2 space-y-4">
             <AIMotivation />
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Today's Tasks</CardTitle>
-                <Link to="/tasks"><Button variant="ghost" size="sm">View All</Button></Link>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {todayTasks.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No tasks scheduled for today. <Link to="/tasks" className="text-primary hover:underline">Add one!</Link></p>
-                ) : (
-                  todayTasks.slice(0, 3).map(task => <TaskCard key={task.id} task={task} />)
-                )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
