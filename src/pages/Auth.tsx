@@ -25,7 +25,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [showContent, setShowContent] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [lampEnabled, setLampEnabled] = useState(true);
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
   const form = useForm<AuthFormData>({
@@ -33,10 +34,21 @@ export default function Auth() {
     defaultValues: { email: '', password: '', displayName: '' },
   });
 
+  // Redirect if already logged in
   useEffect(() => {
-    // Check if intro was already shown this session
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    // Check if lamp is disabled
+    const lampDisabled = localStorage.getItem('lampIntroDisabled') === 'true';
+    setLampEnabled(!lampDisabled);
+    
+    // Check if intro was already shown this session or lamp is disabled
     const introShown = sessionStorage.getItem('lampIntroShown');
-    if (introShown) {
+    if (introShown || lampDisabled) {
       setShowIntro(false);
       setShowContent(true);
     }
@@ -67,39 +79,73 @@ export default function Auth() {
   };
 
   const replayLampIntro = () => {
+    if (!lampEnabled) return;
     sessionStorage.removeItem('lampIntroShown');
     setShowContent(false);
     setShowIntro(true);
   };
 
+  const toggleLampEnabled = () => {
+    const newValue = !lampEnabled;
+    setLampEnabled(newValue);
+    localStorage.setItem('lampIntroDisabled', String(!newValue));
+    toast({ title: newValue ? 'Lamp intro enabled' : 'Lamp intro disabled' });
+  };
+
   return (
     <>
-      {showIntro && <LampIntro onComplete={handleIntroComplete} />}
+      {showIntro && lampEnabled && <LampIntro onComplete={handleIntroComplete} />}
       
       <div className="min-h-screen relative overflow-hidden">
         <AnimatedBackground />
         
-        {/* Replay lamp button */}
+        {/* Top right controls */}
         {showContent && (
-          <button
-            onClick={replayLampIntro}
-            className="fixed top-4 right-4 z-20 p-2 rounded-full backdrop-blur-sm border shadow-lg transition-all hover:scale-110"
-            style={{
-              background: 'hsl(var(--card) / 0.8)',
-              borderColor: 'hsl(var(--border))',
-            }}
-            title="Replay lamp animation"
-          >
-            <svg 
-              className="w-5 h-5" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-              style={{ color: 'hsl(var(--primary))' }}
+          <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
+            {/* Toggle lamp button */}
+            <button
+              onClick={toggleLampEnabled}
+              className="p-2 rounded-full backdrop-blur-sm border shadow-lg transition-all hover:scale-110"
+              style={{
+                background: 'hsl(var(--card) / 0.8)',
+                borderColor: 'hsl(var(--border))',
+              }}
+              title={lampEnabled ? 'Disable lamp intro' : 'Enable lamp intro'}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
+              <svg 
+                className="w-5 h-5" 
+                fill={lampEnabled ? 'currentColor' : 'none'}
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+                style={{ color: 'hsl(var(--primary))' }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </button>
+            
+            {/* Replay lamp button */}
+            {lampEnabled && (
+              <button
+                onClick={replayLampIntro}
+                className="p-2 rounded-full backdrop-blur-sm border shadow-lg transition-all hover:scale-110"
+                style={{
+                  background: 'hsl(var(--card) / 0.8)',
+                  borderColor: 'hsl(var(--border))',
+                }}
+                title="Replay lamp animation"
+              >
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  style={{ color: 'hsl(var(--primary))' }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            )}
+          </div>
         )}
         
         {/* Main content */}

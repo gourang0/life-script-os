@@ -501,13 +501,6 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
             <UrgentGoalCountdown />
-            <Card>
-              <CardHeader><CardTitle>Your Progress</CardTitle></CardHeader>
-              <CardContent className="flex flex-col items-center gap-6">
-                <XPProgressRing level={profile?.level || 1} currentXP={(profile?.xp_points || 0) % 100} xpForNextLevel={100} size="lg" />
-                <StreakDisplay currentStreak={profile?.current_streak || 0} bestStreak={profile?.best_streak || 0} />
-              </CardContent>
-            </Card>
           </div>
 
           <div className="lg:col-span-2 space-y-4">
