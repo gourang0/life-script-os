@@ -2,7 +2,7 @@ import { Habit } from '@/types/habit';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Trash2, Lock } from 'lucide-react';
+import { Trash2, Lock, Printer } from 'lucide-react';
 
 interface HabitGridProps {
   habits: Habit[];
@@ -32,9 +32,24 @@ export const HabitGrid = ({ habits, daysInMonth, onToggle, onDelete }: HabitGrid
     return days.slice(start, start + 7);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="bg-card rounded-lg p-6 shadow-md border border-border">
-      <h3 className="font-semibold text-xl mb-6 text-foreground">Daily Habits</h3>
+    <div className="bg-card rounded-lg p-6 shadow-md border border-border print:shadow-none print:border-0">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="font-semibold text-xl text-foreground">Daily Habits</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handlePrint}
+          className="print:hidden"
+        >
+          <Printer className="w-4 h-4 mr-2" />
+          Print
+        </Button>
+      </div>
       
       <div className="w-full overflow-x-auto scrollbar-thin">
         <table className="w-full border-collapse" style={{ minWidth: `${300 + weeks * 180}px` }}>
@@ -128,6 +143,16 @@ export const HabitGrid = ({ habits, daysInMonth, onToggle, onDelete }: HabitGrid
             ))}
           </tbody>
         </table>
+      </div>
+      
+      {/* Print-only section for goals/memo */}
+      <div className="hidden print:block mt-8 border-t border-border pt-4">
+        <h4 className="font-semibold text-lg mb-4">Goals / Memo</h4>
+        <div className="space-y-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="border-b border-muted h-8" />
+          ))}
+        </div>
       </div>
     </div>
   );
