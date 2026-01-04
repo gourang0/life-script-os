@@ -8,6 +8,7 @@ export interface Reminder {
   content: string;
   priority: number;
   is_completed: boolean;
+  reminder_time: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,7 +40,7 @@ export function useCreateReminder() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (reminder: { content: string; priority: number }) => {
+    mutationFn: async (reminder: { content: string; priority: number; reminder_time?: string | null }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
         .from('reminders')

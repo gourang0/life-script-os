@@ -5,6 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useTasks } from '@/hooks/useTasks';
 import { useDailyGoal, useUpsertDailyGoal } from '@/hooks/useDailyGoals';
 import { useReminders, useCreateReminder, useDeleteReminder, useUpdateReminder } from '@/hooks/useReminders';
+import { useReminderNotifications } from '@/hooks/useReminderNotifications';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
@@ -12,6 +13,7 @@ import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
 import { AIMotivation } from '@/components/dashboard/AIMotivation';
 import { UrgentGoalCountdown } from '@/components/dashboard/UrgentGoalCountdown';
 import { TaskCard } from '@/components/tasks/TaskCard';
+import { DramaticNotification } from '@/components/notifications/DramaticNotification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -36,6 +38,7 @@ export default function Dashboard() {
   const { mutateAsync: createReminder } = useCreateReminder();
   const { mutateAsync: deleteReminder } = useDeleteReminder();
   const { mutateAsync: updateReminder } = useUpdateReminder();
+  const { activeNotification, dismissNotification } = useReminderNotifications();
   
   const [isMetricsOpen, setIsMetricsOpen] = useState(false);
   const [stepsTarget, setStepsTarget] = useState('5000');
@@ -51,6 +54,7 @@ export default function Dashboard() {
   const [isAddingReminder, setIsAddingReminder] = useState(false);
   const [newReminderContent, setNewReminderContent] = useState('');
   const [newReminderPriority, setNewReminderPriority] = useState('2');
+  const [newReminderTime, setNewReminderTime] = useState('');
 
   useEffect(() => {
     if (dailyGoals) {
@@ -101,14 +105,28 @@ export default function Dashboard() {
   const handleAddReminder = async () => {
     if (!newReminderContent.trim()) return;
     try {
+      let reminderTime: string | null = null;
+      if (newReminderTime) {
+        const [hours, minutes] = newReminderTime.split(':');
+        const reminderDate = new Date();
+        reminderDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        // If time is in the past, set for tomorrow
+        if (reminderDate <= new Date()) {
+          reminderDate.setDate(reminderDate.getDate() + 1);
+        }
+        reminderTime = reminderDate.toISOString();
+      }
+      
       await createReminder({
         content: newReminderContent.trim(),
         priority: parseInt(newReminderPriority),
+        reminder_time: reminderTime,
       });
       setNewReminderContent('');
       setNewReminderPriority('2');
+      setNewReminderTime('');
       setIsAddingReminder(false);
-      toast({ title: 'Reminder added!' });
+      toast({ title: 'Reminder added!', description: reminderTime ? `Alert set for ${format(new Date(reminderTime), 'h:mm a')}` : undefined });
     } catch {
       toast({ title: 'Failed to add reminder', variant: 'destructive' });
     }
@@ -162,6 +180,13 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
+      {/* Dramatic Notification */}
+      <DramaticNotification
+        isOpen={!!activeNotification}
+        onClose={dismissNotification}
+        reminder={activeNotification}
+      />
+      
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -233,25 +258,38 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {isAddingReminder && (
-              <div className="flex gap-2 mb-4">
+              <div className="space-y-3 mb-4 p-3 rounded-lg bg-muted/30">
                 <Input
                   placeholder="Enter reminder..."
                   value={newReminderContent}
                   onChange={(e) => setNewReminderContent(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddReminder()}
-                  className="flex-1"
                 />
-                <Select value={newReminderPriority} onValueChange={setNewReminderPriority}>
-                  <SelectTrigger className="w-28 bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover">
-                    <SelectItem value="1">Low</SelectItem>
-                    <SelectItem value="2">Medium</SelectItem>
-                    <SelectItem value="3">High</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button onClick={handleAddReminder} size="sm">Add</Button>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Alert Time (optional)</label>
+                    <Input
+                      type="time"
+                      value={newReminderTime}
+                      onChange={(e) => setNewReminderTime(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Priority</label>
+                    <Select value={newReminderPriority} onValueChange={setNewReminderPriority}>
+                      <SelectTrigger className="w-28 bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        <SelectItem value="1">Low</SelectItem>
+                        <SelectItem value="2">Medium</SelectItem>
+                        <SelectItem value="3">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={handleAddReminder} size="sm" className="w-full">Add Reminder</Button>
               </div>
             )}
             
@@ -262,11 +300,17 @@ export default function Dashboard() {
                     key={reminder.id}
                     className={`flex items-center justify-between p-3 rounded-lg border-l-4 ${getPriorityColor(reminder.priority)}`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1">
                       <span className="text-xs text-muted-foreground font-medium">
                         {getPriorityLabel(reminder.priority)}
                       </span>
                       <span className="text-sm">{reminder.content}</span>
+                      {reminder.reminder_time && (
+                        <span className="text-xs text-primary flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {format(new Date(reminder.reminder_time), 'h:mm a')}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
