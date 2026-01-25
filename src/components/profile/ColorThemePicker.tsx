@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CustomColorPicker } from './CustomColorPicker';
 
 interface ColorTheme {
   name: string;
@@ -415,6 +416,9 @@ export function ColorThemePicker() {
           </p>
         </div>
       </CardContent>
+
+      {/* Custom Color Picker */}
+      <CustomColorPicker />
     </Card>
   );
 }

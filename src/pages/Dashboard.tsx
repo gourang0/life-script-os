@@ -158,10 +158,10 @@ export default function Dashboard() {
   const completedToday = todayTasks.filter(t => t.is_completed).length;
   const pendingTasks = tasks?.filter(t => !t.is_completed) || [];
 
-  // Daily metrics calculations
-  const stepsProgress = dailyGoals?.steps_target ? ((dailyGoals.steps_actual || 0) / dailyGoals.steps_target) * 100 : 0;
-  const workProgress = dailyGoals?.work_hours_target ? ((dailyGoals.work_hours_actual || 0) / dailyGoals.work_hours_target) * 100 : 0;
-  const sleepProgress = dailyGoals?.sleep_hours_target ? ((dailyGoals.sleep_hours_actual || 0) / dailyGoals.sleep_hours_target) * 100 : 0;
+  // Daily metrics calculations - use local state for real-time updates
+  const stepsProgress = parseInt(stepsTarget) > 0 ? (stepsActual / parseInt(stepsTarget)) * 100 : 0;
+  const workProgress = parseInt(workTarget) > 0 ? (workActual / parseInt(workTarget)) * 100 : 0;
+  const sleepProgress = parseInt(sleepTarget) > 0 ? (sleepActual / parseInt(sleepTarget)) * 100 : 0;
 
   const stepTargetOptions = ['5000', '6000', '7000', '8000', '9000', '10000', '12000', '15000', '18000', '20000', '22000', '25000'];
   const hourOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
@@ -352,11 +352,30 @@ export default function Dashboard() {
                     <Footprints className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium">Steps</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {dailyGoals?.steps_actual?.toLocaleString() || 0} / {dailyGoals?.steps_target?.toLocaleString() || 0}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {stepsProgress >= 100 && (
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {stepsActual.toLocaleString()} / {parseInt(stepsTarget).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
                 <Progress value={Math.min(stepsProgress, 100)} className="h-2" />
+                <Slider
+                  value={[stepsActual]}
+                  onValueChange={(v) => {
+                    const maxVal = parseInt(stepsTarget);
+                    const newVal = Math.min(v[0], maxVal);
+                    setStepsActual(newVal);
+                    setStepsManual(String(newVal));
+                  }}
+                  max={parseInt(stepsTarget)}
+                  step={500}
+                  className="mt-1"
+                />
               </div>
 
               {/* Work Hours */}
@@ -366,11 +385,30 @@ export default function Dashboard() {
                     <Briefcase className="w-4 h-4 text-chart-2" />
                     <span className="text-sm font-medium">Work Hours</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {dailyGoals?.work_hours_actual || 0}h / {dailyGoals?.work_hours_target || 0}h
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {workProgress >= 100 && (
+                      <div className="w-5 h-5 rounded-full bg-chart-2 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {workActual}h / {parseInt(workTarget)}h
+                    </span>
+                  </div>
                 </div>
                 <Progress value={Math.min(workProgress, 100)} className="h-2" />
+                <Slider
+                  value={[workActual]}
+                  onValueChange={(v) => {
+                    const maxVal = parseInt(workTarget) || 12;
+                    const newVal = Math.min(v[0], maxVal);
+                    setWorkActual(newVal);
+                    setWorkManual(String(newVal));
+                  }}
+                  max={parseInt(workTarget) || 12}
+                  step={0.5}
+                  className="mt-1"
+                />
               </div>
 
               {/* Sleep Hours */}
@@ -380,11 +418,30 @@ export default function Dashboard() {
                     <Moon className="w-4 h-4 text-chart-3" />
                     <span className="text-sm font-medium">Sleep Hours</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {dailyGoals?.sleep_hours_actual || 0}h / {dailyGoals?.sleep_hours_target || 0}h
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {sleepProgress >= 100 && (
+                      <div className="w-5 h-5 rounded-full bg-chart-3 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {sleepActual}h / {parseInt(sleepTarget)}h
+                    </span>
+                  </div>
                 </div>
                 <Progress value={Math.min(sleepProgress, 100)} className="h-2" />
+                <Slider
+                  value={[sleepActual]}
+                  onValueChange={(v) => {
+                    const maxVal = parseInt(sleepTarget) || 12;
+                    const newVal = Math.min(v[0], maxVal);
+                    setSleepActual(newVal);
+                    setSleepManual(String(newVal));
+                  }}
+                  max={parseInt(sleepTarget) || 12}
+                  step={0.5}
+                  className="mt-1"
+                />
               </div>
             </div>
 
