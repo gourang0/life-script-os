@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Paintbrush, Save, RotateCcw, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  Paintbrush, Save, RotateCcw, Sparkles, Sun, Moon, Plus, Trash2, Check
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface CustomColors {
@@ -16,7 +20,15 @@ interface CustomColors {
   muted: string;
 }
 
-const defaultColors: CustomColors = {
+interface SavedTheme {
+  id: string;
+  name: string;
+  lightColors: CustomColors;
+  darkColors: CustomColors;
+  createdAt: number;
+}
+
+const defaultLightColors: CustomColors = {
   primary: '#f97316',
   secondary: '#3b82f6',
   accent: '#8b5cf6',
@@ -24,6 +36,16 @@ const defaultColors: CustomColors = {
   foreground: '#1c1917',
   card: '#ffffff',
   muted: '#e7e5e4',
+};
+
+const defaultDarkColors: CustomColors = {
+  primary: '#f97316',
+  secondary: '#60a5fa',
+  accent: '#a78bfa',
+  background: '#0c0a09',
+  foreground: '#fafaf9',
+  card: '#1c1917',
+  muted: '#292524',
 };
 
 function hexToHSL(hex: string): string {
@@ -51,115 +73,117 @@ function hexToHSL(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-function hslToHex(hsl: string): string {
-  const match = hsl.match(/(\d+)\s+(\d+)%?\s+(\d+)%?/);
-  if (!match) return '#ffffff';
-
-  const h = parseInt(match[1]) / 360;
-  const s = parseInt(match[2]) / 100;
-  const l = parseInt(match[3]) / 100;
-
-  const hue2rgb = (p: number, q: number, t: number) => {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1/6) return p + (q - p) * 6 * t;
-    if (t < 1/2) return q;
-    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-    return p;
-  };
-
-  let r, g, b;
-  if (s === 0) {
-    r = g = b = l;
-  } else {
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1/3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
-  }
-
-  const toHex = (x: number) => {
-    const hex = Math.round(x * 255).toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
-  };
-
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
 export function CustomColorPicker() {
-  const [colors, setColors] = useState<CustomColors>(defaultColors);
+  const [lightColors, setLightColors] = useState<CustomColors>(defaultLightColors);
+  const [darkColors, setDarkColors] = useState<CustomColors>(defaultDarkColors);
   const [isCustomActive, setIsCustomActive] = useState(false);
+  const [savedThemes, setSavedThemes] = useState<SavedTheme[]>([]);
+  const [newThemeName, setNewThemeName] = useState('');
+  const [activeThemeId, setActiveThemeId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    const savedCustomColors = localStorage.getItem('custom-theme-colors');
+    // Load saved themes
+    const saved = localStorage.getItem('saved-custom-themes');
+    if (saved) {
+      try {
+        setSavedThemes(JSON.parse(saved));
+      } catch {
+        // Use empty array
+      }
+    }
+
+    // Load active custom theme
+    const activeId = localStorage.getItem('active-custom-theme-id');
     const isActive = localStorage.getItem('custom-theme-active') === 'true';
     
-    if (savedCustomColors) {
-      try {
-        setColors(JSON.parse(savedCustomColors));
-      } catch {
-        // Use defaults
+    if (activeId && isActive) {
+      setActiveThemeId(activeId);
+      setIsCustomActive(true);
+      
+      // Find and apply the theme
+      if (saved) {
+        try {
+          const themes: SavedTheme[] = JSON.parse(saved);
+          const activeTheme = themes.find(t => t.id === activeId);
+          if (activeTheme) {
+            setLightColors(activeTheme.lightColors);
+            setDarkColors(activeTheme.darkColors);
+            applyCustomTheme(activeTheme.lightColors, activeTheme.darkColors);
+          }
+        } catch {
+          // Use defaults
+        }
       }
     }
-    setIsCustomActive(isActive);
-    
-    if (isActive && savedCustomColors) {
-      try {
-        applyCustomTheme(JSON.parse(savedCustomColors));
-      } catch {
-        // Use defaults
+
+    // Listen for theme changes
+    const observer = new MutationObserver(() => {
+      if (isCustomActive && activeThemeId) {
+        const saved = localStorage.getItem('saved-custom-themes');
+        if (saved) {
+          try {
+            const themes: SavedTheme[] = JSON.parse(saved);
+            const activeTheme = themes.find(t => t.id === activeThemeId);
+            if (activeTheme) {
+              applyCustomTheme(activeTheme.lightColors, activeTheme.darkColors);
+            }
+          } catch {
+            // Ignore
+          }
+        }
       }
-    }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
   }, []);
 
-  const applyCustomTheme = (customColors: CustomColors) => {
+  const applyCustomTheme = (light: CustomColors, dark: CustomColors) => {
     const root = document.documentElement;
     const isDark = root.classList.contains('dark');
+    const colors = isDark ? dark : light;
     
     // Apply primary
-    const primaryHSL = hexToHSL(customColors.primary);
+    const primaryHSL = hexToHSL(colors.primary);
     root.style.setProperty('--primary', primaryHSL);
     root.style.setProperty('--ring', primaryHSL);
     root.style.setProperty('--sidebar-primary', primaryHSL);
     root.style.setProperty('--glow-color', primaryHSL);
     
     // Apply secondary as accent-foreground
-    const secondaryHSL = hexToHSL(customColors.secondary);
+    const secondaryHSL = hexToHSL(colors.secondary);
     root.style.setProperty('--accent-foreground', secondaryHSL);
     root.style.setProperty('--chart-2', secondaryHSL);
     
     // Apply accent
-    const accentHSL = hexToHSL(customColors.accent);
+    const accentHSL = hexToHSL(colors.accent);
     root.style.setProperty('--chart-3', accentHSL);
     root.style.setProperty('--badge-shine', accentHSL);
     
     // Apply background
-    const bgHSL = hexToHSL(customColors.background);
-    if (!isDark) {
-      root.style.setProperty('--background', bgHSL);
-    }
+    const bgHSL = hexToHSL(colors.background);
+    root.style.setProperty('--background', bgHSL);
     
     // Apply card
-    const cardHSL = hexToHSL(customColors.card);
-    if (!isDark) {
-      root.style.setProperty('--card', cardHSL);
-      root.style.setProperty('--popover', cardHSL);
-    }
+    const cardHSL = hexToHSL(colors.card);
+    root.style.setProperty('--card', cardHSL);
+    root.style.setProperty('--popover', cardHSL);
     
     // Apply muted
-    const mutedHSL = hexToHSL(customColors.muted);
-    if (!isDark) {
-      root.style.setProperty('--muted', mutedHSL);
-      root.style.setProperty('--secondary', mutedHSL);
-    }
+    const mutedHSL = hexToHSL(colors.muted);
+    root.style.setProperty('--muted', mutedHSL);
+    root.style.setProperty('--secondary', mutedHSL);
     
     // Apply foreground
-    const fgHSL = hexToHSL(customColors.foreground);
-    if (!isDark) {
-      root.style.setProperty('--foreground', fgHSL);
-      root.style.setProperty('--card-foreground', fgHSL);
-    }
+    const fgHSL = hexToHSL(colors.foreground);
+    root.style.setProperty('--foreground', fgHSL);
+    root.style.setProperty('--card-foreground', fgHSL);
+    root.style.setProperty('--popover-foreground', fgHSL);
 
     // Calculate chart colors from primary
     const [h, s, l] = primaryHSL.split(' ').map(v => parseFloat(v));
@@ -167,65 +191,152 @@ export function CustomColorPicker() {
     root.style.setProperty('--chart-4', `${(h + 30) % 360} ${s}% ${l}%`);
     root.style.setProperty('--chart-5', `${(h + 60) % 360} ${Math.max(s - 10, 40)}% ${Math.min(l + 5, 75)}%`);
 
+    // Calculate border and input colors
+    const [bgH, bgS, bgL] = bgHSL.split(' ').map(v => parseFloat(v));
+    if (isDark) {
+      root.style.setProperty('--border', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 14, 28)}%`);
+      root.style.setProperty('--input', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 14, 28)}%`);
+      root.style.setProperty('--sidebar-background', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 2, 15)}%`);
+      root.style.setProperty('--sidebar-border', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 14, 28)}%`);
+      root.style.setProperty('--muted-foreground', `${bgH} ${Math.max(bgS - 5, 0)}% 65%`);
+    } else {
+      root.style.setProperty('--border', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 11, 82)}%`);
+      root.style.setProperty('--input', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 11, 82)}%`);
+      root.style.setProperty('--sidebar-background', `${bgH} ${Math.max(bgS - 3, 0)}% ${Math.min(bgL + 1, 98)}%`);
+      root.style.setProperty('--sidebar-border', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 11, 82)}%`);
+      root.style.setProperty('--muted-foreground', `${bgH} ${Math.max(bgS - 5, 0)}% 45%`);
+    }
+
     document.documentElement.classList.add('theme-transitioning');
     setTimeout(() => {
       document.documentElement.classList.remove('theme-transitioning');
     }, 500);
   };
 
-  const handleColorChange = (key: keyof CustomColors, value: string) => {
-    setColors(prev => ({ ...prev, [key]: value }));
+  const handleLightColorChange = (key: keyof CustomColors, value: string) => {
+    setLightColors(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleDarkColorChange = (key: keyof CustomColors, value: string) => {
+    setDarkColors(prev => ({ ...prev, [key]: value }));
   };
 
   const handleApplyTheme = () => {
-    applyCustomTheme(colors);
-    localStorage.setItem('custom-theme-colors', JSON.stringify(colors));
+    applyCustomTheme(lightColors, darkColors);
     localStorage.setItem('custom-theme-active', 'true');
-    localStorage.removeItem('color-theme'); // Clear preset theme
+    localStorage.removeItem('color-theme');
     setIsCustomActive(true);
     toast({ title: 'Custom theme applied!' });
   };
 
-  const handleResetTheme = () => {
-    setColors(defaultColors);
-    localStorage.removeItem('custom-theme-colors');
-    localStorage.removeItem('custom-theme-active');
-    setIsCustomActive(false);
+  const handleSaveTheme = () => {
+    if (!newThemeName.trim()) {
+      toast({ title: 'Please enter a theme name', variant: 'destructive' });
+      return;
+    }
+
+    const newTheme: SavedTheme = {
+      id: Date.now().toString(),
+      name: newThemeName.trim(),
+      lightColors,
+      darkColors,
+      createdAt: Date.now(),
+    };
+
+    const updated = [...savedThemes, newTheme];
+    setSavedThemes(updated);
+    localStorage.setItem('saved-custom-themes', JSON.stringify(updated));
+    setNewThemeName('');
+    toast({ title: `Theme "${newTheme.name}" saved!` });
+  };
+
+  const handleLoadTheme = (theme: SavedTheme) => {
+    setLightColors(theme.lightColors);
+    setDarkColors(theme.darkColors);
+    applyCustomTheme(theme.lightColors, theme.darkColors);
+    setActiveThemeId(theme.id);
+    setIsCustomActive(true);
+    localStorage.setItem('custom-theme-active', 'true');
+    localStorage.setItem('active-custom-theme-id', theme.id);
+    localStorage.removeItem('color-theme');
+    toast({ title: `Theme "${theme.name}" applied!` });
+  };
+
+  const handleDeleteTheme = (themeId: string) => {
+    const updated = savedThemes.filter(t => t.id !== themeId);
+    setSavedThemes(updated);
+    localStorage.setItem('saved-custom-themes', JSON.stringify(updated));
     
-    // Reset to defaults
+    if (activeThemeId === themeId) {
+      setActiveThemeId(null);
+      localStorage.removeItem('active-custom-theme-id');
+    }
+    
+    toast({ title: 'Theme deleted' });
+  };
+
+  const handleResetTheme = () => {
+    setLightColors(defaultLightColors);
+    setDarkColors(defaultDarkColors);
+    localStorage.removeItem('custom-theme-active');
+    localStorage.removeItem('active-custom-theme-id');
+    setIsCustomActive(false);
+    setActiveThemeId(null);
+    
+    // Reset all CSS variables
     const root = document.documentElement;
-    root.style.removeProperty('--primary');
-    root.style.removeProperty('--ring');
-    root.style.removeProperty('--accent-foreground');
-    root.style.removeProperty('--chart-1');
-    root.style.removeProperty('--chart-2');
-    root.style.removeProperty('--chart-3');
-    root.style.removeProperty('--chart-4');
-    root.style.removeProperty('--chart-5');
-    root.style.removeProperty('--background');
-    root.style.removeProperty('--card');
-    root.style.removeProperty('--popover');
-    root.style.removeProperty('--muted');
-    root.style.removeProperty('--secondary');
-    root.style.removeProperty('--foreground');
-    root.style.removeProperty('--card-foreground');
+    const cssVars = [
+      '--primary', '--ring', '--sidebar-primary', '--glow-color',
+      '--accent-foreground', '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5',
+      '--badge-shine', '--background', '--card', '--popover', '--muted', '--secondary',
+      '--foreground', '--card-foreground', '--popover-foreground', '--border', '--input',
+      '--sidebar-background', '--sidebar-border', '--muted-foreground'
+    ];
+    cssVars.forEach(v => root.style.removeProperty(v));
     
     toast({ title: 'Theme reset to default' });
   };
 
   const colorFields: { key: keyof CustomColors; label: string; description: string }[] = [
-    { key: 'primary', label: 'Primary', description: 'Main brand color, buttons, links' },
-    { key: 'secondary', label: 'Secondary', description: 'Accent elements, charts' },
-    { key: 'accent', label: 'Accent', description: 'Highlights, badges, tertiary elements' },
-    { key: 'background', label: 'Background', description: 'Page background' },
-    { key: 'card', label: 'Card', description: 'Card backgrounds' },
-    { key: 'muted', label: 'Muted', description: 'Subtle backgrounds, borders' },
-    { key: 'foreground', label: 'Text', description: 'Main text color' },
+    { key: 'primary', label: 'Primary', description: 'Buttons, links' },
+    { key: 'secondary', label: 'Secondary', description: 'Charts, accents' },
+    { key: 'accent', label: 'Accent', description: 'Highlights' },
+    { key: 'background', label: 'Background', description: 'Page bg' },
+    { key: 'card', label: 'Card', description: 'Card bg' },
+    { key: 'muted', label: 'Muted', description: 'Subtle areas' },
+    { key: 'foreground', label: 'Text', description: 'Text color' },
   ];
 
+  const renderColorInputs = (
+    colors: CustomColors, 
+    onChange: (key: keyof CustomColors, value: string) => void,
+    mode: 'light' | 'dark'
+  ) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {colorFields.map(({ key, label, description }) => (
+        <div key={key} className="space-y-1">
+          <Label className="text-xs font-medium flex items-center gap-2">
+            <div
+              className="w-4 h-4 rounded border border-border"
+              style={{ backgroundColor: colors[key] }}
+            />
+            {label}
+          </Label>
+          <Input
+            type="color"
+            value={colors[key]}
+            onChange={(e) => onChange(key, e.target.value)}
+            className="h-9 p-1 cursor-pointer"
+          />
+          <p className="text-[10px] text-muted-foreground">{description}</p>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <Card className="border-2 border-dashed border-primary/30">
-      <CardHeader>
+    <Card className="border-2 border-dashed border-primary/30 mt-4">
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Paintbrush className="w-5 h-5 text-primary" />
           Custom Color Picker
@@ -235,54 +346,123 @@ export function CustomColorPicker() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Create your own personalized theme by choosing any colors you want.
-        </p>
-
         {/* Color Preview */}
-        <div className="flex gap-1 h-8 rounded-lg overflow-hidden border border-border">
-          {Object.values(colors).map((color, i) => (
-            <div
-              key={i}
-              className="flex-1 transition-all duration-300"
-              style={{ backgroundColor: color }}
-            />
-          ))}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Sun className="w-3 h-3" /> Light Mode
+          </div>
+          <div className="flex gap-0.5 h-6 rounded-md overflow-hidden border border-border">
+            {Object.values(lightColors).map((color, i) => (
+              <div key={i} className="flex-1" style={{ backgroundColor: color }} />
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Moon className="w-3 h-3" /> Dark Mode
+          </div>
+          <div className="flex gap-0.5 h-6 rounded-md overflow-hidden border border-border">
+            {Object.values(darkColors).map((color, i) => (
+              <div key={i} className="flex-1" style={{ backgroundColor: color }} />
+            ))}
+          </div>
         </div>
 
-        {/* Color Inputs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {colorFields.map(({ key, label, description }) => (
-            <div key={key} className="space-y-1.5">
-              <Label className="text-xs font-medium flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded border border-border"
-                  style={{ backgroundColor: colors[key] }}
-                />
-                {label}
-              </Label>
-              <Input
-                type="color"
-                value={colors[key]}
-                onChange={(e) => handleColorChange(key, e.target.value)}
-                className="h-10 p-1 cursor-pointer"
-              />
-              <p className="text-[10px] text-muted-foreground">{description}</p>
-            </div>
-          ))}
-        </div>
+        {/* Tabs for Light/Dark */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'light' | 'dark')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="light" className="flex items-center gap-2">
+              <Sun className="w-4 h-4" /> Light Mode
+            </TabsTrigger>
+            <TabsTrigger value="dark" className="flex items-center gap-2">
+              <Moon className="w-4 h-4" /> Dark Mode
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="light" className="mt-4">
+            {renderColorInputs(lightColors, handleLightColorChange, 'light')}
+          </TabsContent>
+          <TabsContent value="dark" className="mt-4">
+            {renderColorInputs(darkColors, handleDarkColorChange, 'dark')}
+          </TabsContent>
+        </Tabs>
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
+        {/* Apply & Reset Buttons */}
+        <div className="flex gap-2">
           <Button onClick={handleApplyTheme} className="flex-1">
             <Sparkles className="w-4 h-4 mr-2" />
-            Apply Custom Theme
+            Apply Theme
           </Button>
           <Button variant="outline" onClick={handleResetTheme}>
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset
           </Button>
         </div>
+
+        {/* Save Theme Section */}
+        <div className="pt-4 border-t border-border space-y-3">
+          <Label className="text-sm font-medium">Save Current Theme</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter theme name..."
+              value={newThemeName}
+              onChange={(e) => setNewThemeName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveTheme()}
+            />
+            <Button onClick={handleSaveTheme} size="icon">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Saved Themes */}
+        {savedThemes.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">My Saved Themes</Label>
+            <ScrollArea className="h-40">
+              <div className="space-y-2 pr-3">
+                {savedThemes.map((theme) => (
+                  <div 
+                    key={theme.id} 
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      activeThemeId === theme.id 
+                        ? 'border-primary bg-primary/10' 
+                        : 'border-border bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Theme preview mini */}
+                      <div className="flex gap-0.5 w-16 h-4 rounded overflow-hidden">
+                        <div className="flex-1" style={{ backgroundColor: theme.lightColors.primary }} />
+                        <div className="flex-1" style={{ backgroundColor: theme.lightColors.secondary }} />
+                        <div className="flex-1" style={{ backgroundColor: theme.darkColors.primary }} />
+                        <div className="flex-1" style={{ backgroundColor: theme.darkColors.secondary }} />
+                      </div>
+                      <span className="text-sm font-medium">{theme.name}</span>
+                      {activeThemeId === theme.id && (
+                        <Check className="w-4 h-4 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleLoadTheme(theme)}
+                      >
+                        Apply
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteTheme(theme.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
