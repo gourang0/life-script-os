@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Palette, Check, Gamepad2, Zap, Sparkles, Droplets } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Palette, Check, Droplets, SwatchBook } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -12,12 +12,13 @@ import {
 } from '@/components/ui/select';
 import { CustomColorPicker } from './CustomColorPicker';
 
-interface ColorTheme {
+interface PresetPalette {
   name: string;
   primary: string;
-  secondary?: string;
-  accent?: string;
-  type: 'solid' | 'neon' | 'dual' | 'gamified';
+  secondary: string;
+  accent: string;
+  background: { light: string; dark: string };
+  description: string;
 }
 
 interface BackgroundOption {
@@ -25,6 +26,130 @@ interface BackgroundOption {
   light: string;
   dark: string;
 }
+
+// Popular preset palettes
+const presetPalettes: PresetPalette[] = [
+  {
+    name: 'Material Blue',
+    primary: '217 91% 60%',
+    secondary: '199 89% 48%',
+    accent: '291 64% 42%',
+    background: { light: '0 0% 98%', dark: '220 13% 10%' },
+    description: 'Google Material Design Blue'
+  },
+  {
+    name: 'Material Teal',
+    primary: '174 100% 29%',
+    secondary: '187 100% 42%',
+    accent: '340 82% 52%',
+    background: { light: '0 0% 98%', dark: '220 13% 10%' },
+    description: 'Google Material Design Teal'
+  },
+  {
+    name: 'Material Purple',
+    primary: '262 52% 47%',
+    secondary: '291 47% 51%',
+    accent: '4 90% 58%',
+    background: { light: '0 0% 98%', dark: '220 13% 10%' },
+    description: 'Google Material Design Purple'
+  },
+  {
+    name: 'Nord Frost',
+    primary: '193 43% 67%',
+    secondary: '179 25% 65%',
+    accent: '210 34% 63%',
+    background: { light: '220 16% 96%', dark: '220 16% 14%' },
+    description: 'Arctic, north-bluish colors'
+  },
+  {
+    name: 'Nord Aurora',
+    primary: '354 42% 56%',
+    secondary: '14 51% 63%',
+    accent: '40 71% 73%',
+    background: { light: '220 16% 96%', dark: '220 16% 14%' },
+    description: 'Warm aurora-inspired Nord'
+  },
+  {
+    name: 'Dracula',
+    primary: '265 89% 78%',
+    secondary: '135 94% 65%',
+    accent: '326 100% 74%',
+    background: { light: '231 15% 95%', dark: '231 15% 18%' },
+    description: 'Dark theme for vampires'
+  },
+  {
+    name: 'Monokai',
+    primary: '80 76% 53%',
+    secondary: '54 70% 68%',
+    accent: '338 95% 56%',
+    background: { light: '70 8% 94%', dark: '70 8% 15%' },
+    description: 'Classic code editor theme'
+  },
+  {
+    name: 'Solarized',
+    primary: '18 89% 55%',
+    secondary: '175 59% 40%',
+    accent: '237 45% 58%',
+    background: { light: '44 87% 94%', dark: '192 100% 11%' },
+    description: 'Ethan Schoonover\'s classic'
+  },
+  {
+    name: 'Tokyo Night',
+    primary: '230 55% 72%',
+    secondary: '180 66% 69%',
+    accent: '340 68% 69%',
+    background: { light: '220 13% 95%', dark: '235 21% 13%' },
+    description: 'Tokyo city lights inspired'
+  },
+  {
+    name: 'Catppuccin Mocha',
+    primary: '267 84% 81%',
+    secondary: '189 71% 73%',
+    accent: '343 81% 75%',
+    background: { light: '240 21% 95%', dark: '240 21% 15%' },
+    description: 'Soothing pastel theme'
+  },
+  {
+    name: 'One Dark',
+    primary: '207 82% 66%',
+    secondary: '95 38% 62%',
+    accent: '286 60% 67%',
+    background: { light: '220 13% 95%', dark: '220 13% 18%' },
+    description: 'Atom\'s signature theme'
+  },
+  {
+    name: 'Gruvbox',
+    primary: '27 94% 58%',
+    secondary: '61 66% 44%',
+    accent: '157 47% 41%',
+    background: { light: '48 45% 92%', dark: '0 0% 16%' },
+    description: 'Retro groove colors'
+  },
+  {
+    name: 'Synthwave',
+    primary: '316 70% 60%',
+    secondary: '180 100% 50%',
+    accent: '51 100% 50%',
+    background: { light: '260 20% 95%', dark: '260 40% 10%' },
+    description: '80s retro neon vibes'
+  },
+  {
+    name: 'GitHub Light',
+    primary: '215 69% 43%',
+    secondary: '130 44% 44%',
+    accent: '339 90% 51%',
+    background: { light: '0 0% 100%', dark: '215 28% 17%' },
+    description: 'GitHub\'s clean aesthetic'
+  },
+  {
+    name: 'Everforest',
+    primary: '142 40% 54%',
+    secondary: '165 35% 48%',
+    accent: '35 74% 63%',
+    background: { light: '44 22% 93%', dark: '220 17% 17%' },
+    description: 'Comfortable green tones'
+  }
+];
 
 const backgroundOptions: BackgroundOption[] = [
   { name: 'Off White', light: '40 15% 96%', dark: '30 8% 8%' },
@@ -39,72 +164,28 @@ const backgroundOptions: BackgroundOption[] = [
   { name: 'Forest Mist', light: '140 15% 96%', dark: '140 12% 8%' },
 ];
 
-const colorThemes: ColorTheme[] = [
-  // Solid colors
-  { name: 'Orange', primary: '20 90% 48%', type: 'solid' },
-  { name: 'Blue', primary: '220 90% 48%', type: 'solid' },
-  { name: 'Green', primary: '142 76% 36%', type: 'solid' },
-  { name: 'Purple', primary: '271 76% 53%', type: 'solid' },
-  { name: 'Red', primary: '0 72% 50%', type: 'solid' },
-  { name: 'Pink', primary: '330 80% 50%', type: 'solid' },
-  { name: 'Teal', primary: '180 70% 40%', type: 'solid' },
-  { name: 'Yellow', primary: '45 93% 47%', type: 'solid' },
-  { name: 'Indigo', primary: '239 84% 67%', type: 'solid' },
-  { name: 'Cyan', primary: '190 95% 39%', type: 'solid' },
-  { name: 'Lime', primary: '84 85% 35%', type: 'solid' },
-  { name: 'Rose', primary: '350 89% 60%', type: 'solid' },
-  // Neon colors
-  { name: 'Neon Pink', primary: '320 100% 60%', type: 'neon' },
-  { name: 'Neon Blue', primary: '210 100% 55%', type: 'neon' },
-  { name: 'Neon Green', primary: '120 100% 45%', type: 'neon' },
-  { name: 'Electric Purple', primary: '280 100% 60%', type: 'neon' },
-  { name: 'Hot Magenta', primary: '300 100% 50%', type: 'neon' },
-  { name: 'Cyber Yellow', primary: '55 100% 50%', type: 'neon' },
-  { name: 'Aqua Glow', primary: '175 100% 45%', type: 'neon' },
-  { name: 'Sunset Orange', primary: '25 100% 55%', type: 'neon' },
-  { name: 'Violet Neon', primary: '260 100% 65%', type: 'neon' },
-  { name: 'Coral Glow', primary: '15 100% 60%', type: 'neon' },
-  { name: 'Mint Neon', primary: '160 100% 45%', type: 'neon' },
-  { name: 'Gold Shimmer', primary: '42 100% 50%', type: 'neon' },
-  // Dual-tone combinations
-  { name: 'Ocean Sunset', primary: '200 90% 50%', secondary: '25 100% 55%', type: 'dual' },
-  { name: 'Aurora', primary: '280 80% 55%', secondary: '160 90% 45%', type: 'dual' },
-  { name: 'Fire & Ice', primary: '0 85% 55%', secondary: '200 100% 50%', type: 'dual' },
-  { name: 'Cosmic', primary: '270 90% 60%', secondary: '320 100% 55%', type: 'dual' },
-  { name: 'Forest Dawn', primary: '142 70% 40%', secondary: '35 95% 55%', type: 'dual' },
-  { name: 'Miami Vice', primary: '320 100% 55%', secondary: '180 100% 45%', type: 'dual' },
-  { name: 'Lava Lamp', primary: '15 100% 55%', secondary: '280 90% 55%', type: 'dual' },
-  { name: 'Tropical', primary: '45 100% 50%', secondary: '160 100% 40%', type: 'dual' },
-  { name: 'Nebula', primary: '250 90% 60%', secondary: '340 100% 60%', type: 'dual' },
-  { name: 'Candy', primary: '340 90% 60%', secondary: '190 100% 50%', type: 'dual' },
-  { name: 'Sunset Beach', primary: '35 100% 55%', secondary: '320 80% 55%', type: 'dual' },
-  { name: 'Electric Storm', primary: '220 100% 55%', secondary: '55 100% 50%', type: 'dual' },
-  // Gamified themes (full combos)
-  { name: 'XP Hunter', primary: '45 95% 50%', secondary: '25 90% 55%', accent: '15 85% 50%', type: 'gamified' },
-  { name: 'Level Master', primary: '260 80% 55%', secondary: '280 75% 60%', accent: '300 70% 55%', type: 'gamified' },
-  { name: 'Streak Champion', primary: '15 90% 55%', secondary: '0 85% 55%', accent: '340 80% 55%', type: 'gamified' },
-  { name: 'Quest Hero', primary: '200 90% 50%', secondary: '180 80% 45%', accent: '160 70% 45%', type: 'gamified' },
-  { name: 'Achievement Pro', primary: '140 70% 45%', secondary: '160 65% 50%', accent: '80 60% 50%', type: 'gamified' },
-  { name: 'Power Gamer', primary: '280 85% 55%', secondary: '320 80% 55%', accent: '0 90% 55%', type: 'gamified' },
-  { name: 'Boss Mode', primary: '0 0% 20%', secondary: '45 95% 55%', accent: '0 85% 55%', type: 'gamified' },
-  { name: 'Neon Arcade', primary: '300 100% 60%', secondary: '180 100% 50%', accent: '60 100% 50%', type: 'gamified' },
-  { name: 'Retro Wave', primary: '320 90% 55%', secondary: '200 100% 55%', accent: '280 85% 60%', type: 'gamified' },
-  { name: 'Cyber Punk', primary: '60 100% 50%', secondary: '180 100% 50%', accent: '300 100% 55%', type: 'gamified' },
-];
-
 export function ColorThemePicker() {
-  const [selectedTheme, setSelectedTheme] = useState<string>('Orange');
+  const [selectedPalette, setSelectedPalette] = useState<string>('');
   const [selectedBackground, setSelectedBackground] = useState<string>('Off White');
 
+  // Helper to apply palette based on current mode
+  const applyPaletteForCurrentMode = (paletteName: string) => {
+    const palette = presetPalettes.find(p => p.name === paletteName);
+    if (palette) {
+      applyPresetPalette(palette);
+    }
+  };
+
   useEffect(() => {
-    const savedTheme = localStorage.getItem('color-theme');
+    const savedPalette = localStorage.getItem('preset-palette');
     const savedBackground = localStorage.getItem('background-color');
     
-    if (savedTheme) {
-      setSelectedTheme(savedTheme);
-      const theme = colorThemes.find(t => t.name === savedTheme);
-      if (theme) {
-        applyTheme(theme);
+    if (savedPalette) {
+      setSelectedPalette(savedPalette);
+      // Apply palette on initial load
+      const palette = presetPalettes.find(p => p.name === savedPalette);
+      if (palette) {
+        applyPresetPalette(palette);
       }
     }
     
@@ -115,6 +196,27 @@ export function ColorThemePicker() {
         applyBackground(bg);
       }
     }
+
+    // Listen for theme mode changes (light/dark toggle)
+    const handleThemeModeChange = () => {
+      const currentPalette = localStorage.getItem('preset-palette');
+      if (currentPalette) {
+        const palette = presetPalettes.find(p => p.name === currentPalette);
+        if (palette) {
+          setTimeout(() => applyPresetPalette(palette), 100);
+        }
+      }
+      const currentBg = localStorage.getItem('background-color');
+      if (currentBg) {
+        const bg = backgroundOptions.find(b => b.name === currentBg);
+        if (bg) {
+          setTimeout(() => applyBackground(bg), 100);
+        }
+      }
+    };
+
+    window.addEventListener('theme-mode-changed', handleThemeModeChange);
+    return () => window.removeEventListener('theme-mode-changed', handleThemeModeChange);
   }, []);
 
   const applyBackground = (bg: BackgroundOption) => {
@@ -124,7 +226,6 @@ export function ColorThemePicker() {
     const bgValue = isDark ? bg.dark : bg.light;
     root.style.setProperty('--background', bgValue);
     
-    // Parse and adjust related colors
     const [h, s, l] = bgValue.split(' ').map(v => parseFloat(v));
     
     if (isDark) {
@@ -150,65 +251,86 @@ export function ColorThemePicker() {
     }
   };
 
-  const applyTheme = (theme: ColorTheme) => {
+  const applyPresetPalette = (palette: PresetPalette) => {
     const root = document.documentElement;
+    const isDark = root.classList.contains('dark');
     
     // Apply primary color
-    root.style.setProperty('--primary', theme.primary);
-    root.style.setProperty('--ring', theme.primary);
-    root.style.setProperty('--sidebar-primary', theme.primary);
-    root.style.setProperty('--sidebar-ring', theme.primary);
-    root.style.setProperty('--glow-color', theme.primary);
+    root.style.setProperty('--primary', palette.primary);
+    root.style.setProperty('--ring', palette.primary);
+    root.style.setProperty('--sidebar-primary', palette.primary);
+    root.style.setProperty('--sidebar-ring', palette.primary);
+    root.style.setProperty('--glow-color', palette.primary);
     
-    // Parse the HSL values
-    const [h, s, l] = theme.primary.split(' ').map(v => parseFloat(v));
+    // Parse HSL values
+    const [h, s, l] = palette.primary.split(' ').map(v => parseFloat(v));
+    const [h2, s2, l2] = palette.secondary.split(' ').map(v => parseFloat(v));
     
-    // For dual-tone and gamified, use secondary color for some chart colors
-    if ((theme.type === 'dual' || theme.type === 'gamified') && theme.secondary) {
-      const [h2, s2, l2] = theme.secondary.split(' ').map(v => parseFloat(v));
-      root.style.setProperty('--chart-1', `${h} ${s}% ${Math.min(l + 12, 80)}%`);
-      root.style.setProperty('--chart-2', `${h2} ${s2}% ${l2}%`);
-      root.style.setProperty('--chart-3', `${h2} ${s2}% ${Math.min(l2 + 10, 76)}%`);
-      root.style.setProperty('--chart-4', `${h} ${s}% ${Math.max(l - 5, 30)}%`);
-      
-      // Apply accent for gamified themes
-      if (theme.type === 'gamified' && theme.accent) {
-        root.style.setProperty('--badge-shine', theme.accent);
-        root.style.setProperty('--chart-5', theme.accent);
-      }
-    } else {
-      root.style.setProperty('--chart-1', `${h} ${s}% ${Math.min(l + 12, 80)}%`);
-      root.style.setProperty('--chart-2', `${(h + 23) % 360} ${s}% ${l}%`);
-      root.style.setProperty('--chart-3', `${(h + 27) % 360} ${s}% ${Math.min(l + 5, 76)}%`);
-      root.style.setProperty('--chart-4', `${(h + 4) % 360} ${s}% ${l}%`);
-    }
+    // Apply chart colors
+    root.style.setProperty('--chart-1', `${h} ${s}% ${Math.min(l + 12, 80)}%`);
+    root.style.setProperty('--chart-2', palette.secondary);
+    root.style.setProperty('--chart-3', palette.accent);
+    root.style.setProperty('--chart-4', `${h} ${s}% ${Math.max(l - 5, 30)}%`);
+    root.style.setProperty('--chart-5', `${h2} ${s2}% ${Math.min(l2 + 10, 80)}%`);
+    root.style.setProperty('--badge-shine', palette.accent);
     
-    // Update accent colors
-    const isDark = document.documentElement.classList.contains('dark');
+    // Apply accent colors
     if (isDark) {
       root.style.setProperty('--accent', `${h} 91% 14%`);
-      root.style.setProperty('--accent-foreground', theme.secondary || `${(h + 23) % 360} ${s}% ${l}%`);
-      root.style.setProperty('--sidebar-accent', theme.secondary || `${(h + 23) % 360} ${s}% ${l}%`);
+      root.style.setProperty('--accent-foreground', palette.secondary);
+      root.style.setProperty('--sidebar-accent', palette.secondary);
       root.style.setProperty('--sidebar-accent-foreground', `${h} 91% 14%`);
     } else {
-      root.style.setProperty('--accent', `${(h + 27) % 360} 100% 96%`);
-      root.style.setProperty('--accent-foreground', theme.secondary || `${(h + 17) % 360} 92% 50%`);
+      root.style.setProperty('--accent', `${h} 100% 96%`);
+      root.style.setProperty('--accent-foreground', palette.secondary);
       root.style.setProperty('--sidebar-accent', `${h} ${s}% 32%`);
       root.style.setProperty('--sidebar-accent-foreground', `${h} ${s}% 98%`);
     }
-
-    // Add transition class for smooth color change
+    
+    // Apply background
+    const bgValue = isDark ? palette.background.dark : palette.background.light;
+    root.style.setProperty('--background', bgValue);
+    
+    const [bgH, bgS, bgL] = bgValue.split(' ').map(v => parseFloat(v));
+    
+    if (isDark) {
+      root.style.setProperty('--card', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 4, 22)}%`);
+      root.style.setProperty('--popover', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 6, 25)}%`);
+      root.style.setProperty('--secondary', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 12, 32)}%`);
+      root.style.setProperty('--muted', `${bgH} ${Math.max(bgS - 4, 0)}% ${Math.min(bgL + 18, 38)}%`);
+      root.style.setProperty('--border', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 14, 30)}%`);
+      root.style.setProperty('--input', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 14, 30)}%`);
+      root.style.setProperty('--sidebar-background', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 2, 16)}%`);
+      root.style.setProperty('--sidebar', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 4, 18)}%`);
+      root.style.setProperty('--sidebar-border', `${bgH} ${Math.max(bgS - 2, 0)}% ${Math.min(bgL + 14, 30)}%`);
+    } else {
+      root.style.setProperty('--card', `${bgH} ${Math.max(bgS - 3, 0)}% ${Math.min(bgL + 2, 100)}%`);
+      root.style.setProperty('--popover', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 2, 92)}%`);
+      root.style.setProperty('--secondary', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 8, 88)}%`);
+      root.style.setProperty('--muted', `${bgH} ${Math.max(bgS - 7, 0)}% ${Math.max(bgL - 14, 82)}%`);
+      root.style.setProperty('--border', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 11, 85)}%`);
+      root.style.setProperty('--input', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 11, 85)}%`);
+      root.style.setProperty('--sidebar-background', `${bgH} ${Math.max(bgS - 3, 0)}% ${Math.min(bgL + 1, 98)}%`);
+      root.style.setProperty('--sidebar', `${bgH} ${Math.max(bgS - 3, 0)}% ${Math.min(bgL + 1, 98)}%`);
+      root.style.setProperty('--sidebar-border', `${bgH} ${Math.max(bgS - 5, 0)}% ${Math.max(bgL - 11, 85)}%`);
+    }
+    
     document.documentElement.classList.add('theme-transitioning');
     setTimeout(() => {
       document.documentElement.classList.remove('theme-transitioning');
     }, 500);
   };
 
-  const handleSelectTheme = (theme: ColorTheme) => {
-    setSelectedTheme(theme.name);
-    applyTheme(theme);
-    localStorage.setItem('color-theme', theme.name);
-    toast({ title: `Theme changed to ${theme.name}` });
+  const handleSelectPalette = (paletteName: string) => {
+    setSelectedPalette(paletteName);
+    const palette = presetPalettes.find(p => p.name === paletteName);
+    if (palette) {
+      applyPresetPalette(palette);
+      localStorage.setItem('preset-palette', paletteName);
+      localStorage.removeItem('custom-theme-active');
+      localStorage.removeItem('color-theme');
+      toast.success(`Applied ${paletteName} theme`);
+    }
   };
 
   const handleSelectBackground = (bgName: string) => {
@@ -217,38 +339,11 @@ export function ColorThemePicker() {
     if (bg) {
       applyBackground(bg);
       localStorage.setItem('background-color', bgName);
-      toast({ title: `Background changed to ${bgName}` });
+      toast.success(`Background changed to ${bgName}`);
     }
   };
 
-  const solidThemes = colorThemes.filter(t => t.type === 'solid');
-  const neonThemes = colorThemes.filter(t => t.type === 'neon');
-  const dualThemes = colorThemes.filter(t => t.type === 'dual');
-  const gamifiedThemes = colorThemes.filter(t => t.type === 'gamified');
-
-  const renderThemePreview = (theme: ColorTheme) => {
-    if (theme.type === 'dual' || theme.type === 'gamified') {
-      return (
-        <div className="absolute inset-0 flex overflow-hidden rounded-md">
-          <div 
-            className="flex-1"
-            style={{ backgroundColor: `hsl(${theme.primary})` }}
-          />
-          <div 
-            className="flex-1"
-            style={{ backgroundColor: `hsl(${theme.secondary})` }}
-          />
-          {theme.accent && (
-            <div 
-              className="absolute bottom-0 left-0 right-0 h-1"
-              style={{ backgroundColor: `hsl(${theme.accent})` }}
-            />
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
+  const currentPalette = presetPalettes.find(p => p.name === selectedPalette);
 
   return (
     <Card>
@@ -259,6 +354,42 @@ export function ColorThemePicker() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Preset Palette Dropdown */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <SwatchBook className="w-4 h-4 text-primary" />
+            Preset Palettes
+          </div>
+          <Select value={selectedPalette} onValueChange={handleSelectPalette}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a preset theme palette" />
+            </SelectTrigger>
+            <SelectContent className="max-h-80">
+              {presetPalettes.map((palette) => (
+                <SelectItem key={palette.name} value={palette.name}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-0.5 w-12 h-4 rounded overflow-hidden border border-border">
+                      <div className="flex-1" style={{ backgroundColor: `hsl(${palette.primary})` }} />
+                      <div className="flex-1" style={{ backgroundColor: `hsl(${palette.secondary})` }} />
+                      <div className="flex-1" style={{ backgroundColor: `hsl(${palette.accent})` }} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{palette.name}</span>
+                      <span className="text-xs text-muted-foreground">{palette.description}</span>
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {currentPalette && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Check className="w-3 h-3 text-primary" />
+              {currentPalette.description}
+            </div>
+          )}
+        </div>
+
         {/* Background Color Selector */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
@@ -273,10 +404,10 @@ export function ColorThemePicker() {
               {backgroundOptions.map((bg) => (
                 <SelectItem key={bg.name} value={bg.name}>
                   <div className="flex items-center gap-3">
-                    <div 
-                      className="w-5 h-5 rounded border border-border"
-                      style={{ backgroundColor: `hsl(${bg.light})` }}
-                    />
+                    <div className="flex w-8 h-4 rounded border border-border overflow-hidden">
+                      <div className="flex-1" style={{ backgroundColor: `hsl(${bg.light})` }} />
+                      <div className="flex-1" style={{ backgroundColor: `hsl(${bg.dark})` }} />
+                    </div>
                     <span>{bg.name}</span>
                   </div>
                 </SelectItem>
@@ -285,121 +416,26 @@ export function ColorThemePicker() {
           </Select>
         </div>
 
-        {/* Gamified Combos - Featured */}
+        {/* Palette Preview Grid */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Gamepad2 className="w-4 h-4 text-primary" />
-            Gamified Combos
-          </div>
+          <p className="text-sm font-medium">Quick Select</p>
           <div className="grid grid-cols-5 gap-2">
-            {gamifiedThemes.map((theme) => (
+            {presetPalettes.slice(0, 10).map((palette) => (
               <Button
-                key={theme.name}
+                key={palette.name}
                 variant="outline"
-                className="relative h-14 w-full p-0 overflow-hidden hover:scale-105 transition-transform"
-                onClick={() => handleSelectTheme(theme)}
-                title={theme.name}
-              >
-                {renderThemePreview(theme)}
-                {selectedTheme === theme.name && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/40">
-                    <Check className="w-5 h-5 text-primary-foreground drop-shadow-md" />
-                  </div>
-                )}
-              </Button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Full color combos with primary, secondary & accent colors
-          </p>
-        </div>
-
-        {/* Solid Colors */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Solid Colors</p>
-          <div className="grid grid-cols-6 gap-2">
-            {solidThemes.map((theme) => (
-              <Button
-                key={theme.name}
-                variant="outline"
-                className="relative h-10 w-full p-0 overflow-hidden hover:scale-105 transition-transform"
-                onClick={() => handleSelectTheme(theme)}
-                title={theme.name}
-              >
-                <div
-                  className="absolute inset-0"
-                  style={{ backgroundColor: `hsl(${theme.primary})` }}
-                />
-                {selectedTheme === theme.name && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                    <Check className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                )}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        {/* Neon Colors */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Zap className="w-4 h-4 text-muted-foreground" />
-            Neon Glow
-          </div>
-          <div className="grid grid-cols-6 gap-2">
-            {neonThemes.map((theme) => (
-              <Button
-                key={theme.name}
-                variant="outline"
-                className="relative h-10 w-full p-0 overflow-hidden hover:scale-110 transition-transform"
-                onClick={() => handleSelectTheme(theme)}
-                title={theme.name}
-              >
-                <div
-                  className="absolute inset-0"
-                  style={{ 
-                    backgroundColor: `hsl(${theme.primary})`,
-                    boxShadow: `0 0 12px hsl(${theme.primary} / 0.6), inset 0 0 8px hsl(${theme.primary} / 0.3)`
-                  }}
-                />
-                {selectedTheme === theme.name && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                    <Check className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                )}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Dual-Tone */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="w-4 h-4 text-muted-foreground" />
-            Dual-Tone Combos
-          </div>
-          <div className="grid grid-cols-6 gap-2">
-            {dualThemes.map((theme) => (
-              <Button
-                key={theme.name}
-                variant="outline"
-                className="relative h-10 w-full p-0 overflow-hidden hover:scale-110 transition-transform"
-                onClick={() => handleSelectTheme(theme)}
-                title={theme.name}
+                className="relative h-12 w-full p-0 overflow-hidden hover:scale-105 transition-transform"
+                onClick={() => handleSelectPalette(palette.name)}
+                title={`${palette.name}: ${palette.description}`}
               >
                 <div className="absolute inset-0 flex">
-                  <div 
-                    className="w-1/2 h-full"
-                    style={{ backgroundColor: `hsl(${theme.primary})` }}
-                  />
-                  <div 
-                    className="w-1/2 h-full"
-                    style={{ backgroundColor: `hsl(${theme.secondary})` }}
-                  />
+                  <div className="flex-1" style={{ backgroundColor: `hsl(${palette.primary})` }} />
+                  <div className="flex-1" style={{ backgroundColor: `hsl(${palette.secondary})` }} />
+                  <div className="flex-1" style={{ backgroundColor: `hsl(${palette.accent})` }} />
                 </div>
-                {selectedTheme === theme.name && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                    <Check className="w-4 h-4 text-primary-foreground" />
+                {selectedPalette === palette.name && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                    <Check className="w-4 h-4 text-primary-foreground drop-shadow-md" />
                   </div>
                 )}
               </Button>
@@ -410,7 +446,7 @@ export function ColorThemePicker() {
         {/* Current Selection */}
         <div className="pt-2 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            Theme: <span className="font-medium text-foreground">{selectedTheme}</span>
+            Theme: <span className="font-medium text-foreground">{selectedPalette || 'None'}</span>
             {' • '}
             Background: <span className="font-medium text-foreground">{selectedBackground}</span>
           </p>

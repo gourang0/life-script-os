@@ -36,10 +36,13 @@ export default function Profile() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-foreground">Profile</h1>
-          <Button variant="outline" onClick={handleSignOut}><LogOut className="w-4 h-4 mr-2" />Sign Out</Button>
+          <Button variant="outline" onClick={handleSignOut}>
+            <LogOut className="w-4 h-4 mr-2" />Sign Out
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Profile Card */}
           <Card className="lg:col-span-1">
             <CardContent className="pt-6 flex flex-col items-center gap-4">
               <AvatarPicker />
@@ -52,51 +55,55 @@ export default function Profile() {
             </CardContent>
           </Card>
 
+          {/* Stats Card */}
           <Card className="lg:col-span-2">
+            <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-2xl font-bold text-primary">{profile?.xp_points?.toLocaleString() || 0}</p>
+                  <p className="text-sm text-muted-foreground">Total XP</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-2xl font-bold text-foreground">{profile?.total_tasks_completed || 0}</p>
+                  <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-2xl font-bold text-foreground">{userBadges?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">Badges Earned</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-2xl font-bold text-foreground">{profile?.streak_freeze_count || 0}</p>
+                  <p className="text-sm text-muted-foreground">Streak Freezes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Achievements Section */}
+        {allBadges && allBadges.length > 0 && (
+          <Card>
             <CardHeader><CardTitle>Achievements</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {allBadges?.map(badge => {
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {allBadges.map(badge => {
                   const earned = earnedBadgeIds.has(badge.id);
                   return (
-                    <div key={badge.id} className={`p-4 rounded-lg border text-center transition-all ${earned ? 'bg-primary/10 border-primary/30' : 'bg-muted/30 border-border opacity-50'}`}>
-                      <span className="text-3xl">{badge.icon}</span>
-                      <p className="font-medium text-sm mt-2 text-foreground">{badge.name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{badge.description}</p>
-                      {earned && <Badge className="mt-2" variant="secondary">Earned!</Badge>}
+                    <div key={badge.id} className={`p-3 rounded-lg border text-center transition-all ${earned ? 'bg-primary/10 border-primary/30' : 'bg-muted/30 border-border opacity-50'}`}>
+                      <span className="text-2xl">{badge.icon}</span>
+                      <p className="font-medium text-xs mt-1 text-foreground truncate">{badge.name}</p>
+                      {earned && <Badge className="mt-1 text-[10px]" variant="secondary">Earned</Badge>}
                     </div>
                   );
                 })}
               </div>
             </CardContent>
           </Card>
-        </div>
+        )}
 
+        {/* Color Theme Picker */}
         <ColorThemePicker />
-
-        <Card>
-          <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 rounded-lg bg-muted/30">
-                <p className="text-2xl font-bold text-primary">{profile?.xp_points?.toLocaleString() || 0}</p>
-                <p className="text-sm text-muted-foreground">Total XP</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/30">
-                <p className="text-2xl font-bold text-foreground">{profile?.total_tasks_completed || 0}</p>
-                <p className="text-sm text-muted-foreground">Tasks Completed</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/30">
-                <p className="text-2xl font-bold text-foreground">{userBadges?.length || 0}</p>
-                <p className="text-sm text-muted-foreground">Badges Earned</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-muted/30">
-                <p className="text-2xl font-bold text-foreground">{profile?.streak_freeze_count || 0}</p>
-                <p className="text-sm text-muted-foreground">Streak Freezes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </AppLayout>
   );
