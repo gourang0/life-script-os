@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  Paintbrush, Save, RotateCcw, Sparkles, Sun, Moon, Plus, Trash2, Check
+  RotateCcw, Sparkles, Sun, Moon, Plus, Trash2, Check
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -335,17 +334,13 @@ export function CustomColorPicker() {
   );
 
   return (
-    <Card className="border-2 border-dashed border-primary/30 mt-4">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Paintbrush className="w-5 h-5 text-primary" />
-          Custom Color Picker
-          {isCustomActive && (
-            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Active</span>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4 p-4 rounded-lg border border-dashed border-primary/30 bg-muted/20">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Create your own personalized theme</p>
+        {isCustomActive && (
+          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Active</span>
+        )}
+      </div>
         {/* Color Preview */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -463,7 +458,6 @@ export function CustomColorPicker() {
             </ScrollArea>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

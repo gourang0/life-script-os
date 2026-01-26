@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Palette, Check, Droplets, SwatchBook } from 'lucide-react';
+import { Palette, Check, Droplets, SwatchBook, ChevronDown, Paintbrush } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -10,6 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { CustomColorPicker } from './CustomColorPicker';
 
 interface PresetPalette {
@@ -344,117 +349,141 @@ export function ColorThemePicker() {
   };
 
   const currentPalette = presetPalettes.find(p => p.name === selectedPalette);
+  const isCustomActive = localStorage.getItem('custom-theme-active') === 'true';
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Palette className="w-5 h-5 text-primary" />
-          Color Theme
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {/* Preset Palette Dropdown */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <SwatchBook className="w-4 h-4 text-primary" />
-            Preset Palettes
-          </div>
-          <Select value={selectedPalette} onValueChange={handleSelectPalette}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a preset theme palette" />
-            </SelectTrigger>
-            <SelectContent className="max-h-80">
-              {presetPalettes.map((palette) => (
-                <SelectItem key={palette.name} value={palette.name}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-0.5 w-12 h-4 rounded overflow-hidden border border-border">
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button 
+            variant="ghost" 
+            className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+          >
+            <div className="flex items-center gap-3">
+              <Palette className="w-5 h-5 text-primary" />
+              <div className="text-left">
+                <p className="font-semibold text-foreground">Color Theme</p>
+                <p className="text-xs text-muted-foreground">
+                  {isCustomActive ? 'Custom Theme' : selectedPalette || 'Default'} • {selectedBackground}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Current theme preview */}
+              {currentPalette && (
+                <div className="flex gap-0.5 w-12 h-5 rounded overflow-hidden border border-border">
+                  <div className="flex-1" style={{ backgroundColor: `hsl(${currentPalette.primary})` }} />
+                  <div className="flex-1" style={{ backgroundColor: `hsl(${currentPalette.secondary})` }} />
+                  <div className="flex-1" style={{ backgroundColor: `hsl(${currentPalette.accent})` }} />
+                </div>
+              )}
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            </div>
+          </Button>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          <CardContent className="space-y-5 pt-0">
+            {/* Preset Palette Dropdown */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <SwatchBook className="w-4 h-4 text-primary" />
+                Preset Palettes
+              </div>
+              <Select value={selectedPalette} onValueChange={handleSelectPalette}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a preset theme palette" />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  {presetPalettes.map((palette) => (
+                    <SelectItem key={palette.name} value={palette.name}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-0.5 w-12 h-4 rounded overflow-hidden border border-border">
+                          <div className="flex-1" style={{ backgroundColor: `hsl(${palette.primary})` }} />
+                          <div className="flex-1" style={{ backgroundColor: `hsl(${palette.secondary})` }} />
+                          <div className="flex-1" style={{ backgroundColor: `hsl(${palette.accent})` }} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{palette.name}</span>
+                          <span className="text-xs text-muted-foreground">{palette.description}</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currentPalette && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3 h-3 text-primary" />
+                  {currentPalette.description}
+                </div>
+              )}
+            </div>
+
+            {/* Background Color Selector */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Droplets className="w-4 h-4 text-muted-foreground" />
+                Background Color
+              </div>
+              <Select value={selectedBackground} onValueChange={handleSelectBackground}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select background color" />
+                </SelectTrigger>
+                <SelectContent>
+                  {backgroundOptions.map((bg) => (
+                    <SelectItem key={bg.name} value={bg.name}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex w-8 h-4 rounded border border-border overflow-hidden">
+                          <div className="flex-1" style={{ backgroundColor: `hsl(${bg.light})` }} />
+                          <div className="flex-1" style={{ backgroundColor: `hsl(${bg.dark})` }} />
+                        </div>
+                        <span>{bg.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quick Select Grid */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Quick Select</p>
+              <div className="grid grid-cols-5 gap-2">
+                {presetPalettes.slice(0, 10).map((palette) => (
+                  <Button
+                    key={palette.name}
+                    variant="outline"
+                    className="relative h-10 w-full p-0 overflow-hidden hover:scale-105 transition-transform"
+                    onClick={() => handleSelectPalette(palette.name)}
+                    title={`${palette.name}: ${palette.description}`}
+                  >
+                    <div className="absolute inset-0 flex">
                       <div className="flex-1" style={{ backgroundColor: `hsl(${palette.primary})` }} />
                       <div className="flex-1" style={{ backgroundColor: `hsl(${palette.secondary})` }} />
                       <div className="flex-1" style={{ backgroundColor: `hsl(${palette.accent})` }} />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{palette.name}</span>
-                      <span className="text-xs text-muted-foreground">{palette.description}</span>
-                    </div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {currentPalette && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Check className="w-3 h-3 text-primary" />
-              {currentPalette.description}
+                    {selectedPalette === palette.name && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                        <Check className="w-4 h-4 text-primary-foreground drop-shadow-md" />
+                      </div>
+                    )}
+                  </Button>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Background Color Selector */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Droplets className="w-4 h-4 text-muted-foreground" />
-            Background Color
-          </div>
-          <Select value={selectedBackground} onValueChange={handleSelectBackground}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select background color" />
-            </SelectTrigger>
-            <SelectContent>
-              {backgroundOptions.map((bg) => (
-                <SelectItem key={bg.name} value={bg.name}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex w-8 h-4 rounded border border-border overflow-hidden">
-                      <div className="flex-1" style={{ backgroundColor: `hsl(${bg.light})` }} />
-                      <div className="flex-1" style={{ backgroundColor: `hsl(${bg.dark})` }} />
-                    </div>
-                    <span>{bg.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Palette Preview Grid */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Quick Select</p>
-          <div className="grid grid-cols-5 gap-2">
-            {presetPalettes.slice(0, 10).map((palette) => (
-              <Button
-                key={palette.name}
-                variant="outline"
-                className="relative h-12 w-full p-0 overflow-hidden hover:scale-105 transition-transform"
-                onClick={() => handleSelectPalette(palette.name)}
-                title={`${palette.name}: ${palette.description}`}
-              >
-                <div className="absolute inset-0 flex">
-                  <div className="flex-1" style={{ backgroundColor: `hsl(${palette.primary})` }} />
-                  <div className="flex-1" style={{ backgroundColor: `hsl(${palette.secondary})` }} />
-                  <div className="flex-1" style={{ backgroundColor: `hsl(${palette.accent})` }} />
-                </div>
-                {selectedPalette === palette.name && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/40">
-                    <Check className="w-4 h-4 text-primary-foreground drop-shadow-md" />
-                  </div>
-                )}
-              </Button>
-            ))}
-          </div>
-        </div>
-        
-        {/* Current Selection */}
-        <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground text-center">
-            Theme: <span className="font-medium text-foreground">{selectedPalette || 'None'}</span>
-            {' • '}
-            Background: <span className="font-medium text-foreground">{selectedBackground}</span>
-          </p>
-        </div>
-      </CardContent>
-
-      {/* Custom Color Picker */}
-      <CustomColorPicker />
+            {/* Custom Color Picker Section */}
+            <div className="pt-2 border-t border-border">
+              <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                <Paintbrush className="w-4 h-4 text-primary" />
+                Custom Colors
+              </div>
+              <CustomColorPicker />
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
