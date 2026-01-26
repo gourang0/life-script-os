@@ -109,6 +109,15 @@ function applyCustomThemeColors(colors: CustomColors, isDark: boolean) {
   }
 }
 
+// Re-apply preset palette colors when theme changes
+function reapplyPresetPalette(isDark: boolean) {
+  const savedPalette = localStorage.getItem('preset-palette');
+  if (!savedPalette) return;
+  
+  // Dispatch custom event to trigger ColorThemePicker to reapply
+  window.dispatchEvent(new CustomEvent('theme-mode-changed', { detail: { isDark } }));
+}
+
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
@@ -130,27 +139,39 @@ export function useTheme() {
           if (activeTheme) {
             const colors = isDark ? activeTheme.darkColors : activeTheme.lightColors;
             applyCustomThemeColors(colors, isDark);
+            return true;
           }
         } catch {
           // Ignore errors
         }
       }
     }
+    return false;
   }, []);
 
   useEffect(() => {
     const root = document.documentElement;
     
     const applyTheme = (resolvedTheme: 'light' | 'dark') => {
+      // Add transition class
+      root.classList.add('theme-transitioning');
+      
       if (resolvedTheme === 'dark') {
         root.classList.add('dark');
       } else {
         root.classList.remove('dark');
       }
       
-      // Apply custom theme colors if active
+      // Apply custom theme colors if active, otherwise reapply preset
       setTimeout(() => {
-        applyCustomTheme(resolvedTheme === 'dark');
+        const customApplied = applyCustomTheme(resolvedTheme === 'dark');
+        if (!customApplied) {
+          reapplyPresetPalette(resolvedTheme === 'dark');
+        }
+        
+        setTimeout(() => {
+          root.classList.remove('theme-transitioning');
+        }, 300);
       }, 50);
     };
 
