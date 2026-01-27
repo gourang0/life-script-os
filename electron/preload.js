@@ -12,6 +12,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('get-app-info');
   },
   
+  // Auto-launch settings
+  getAutoLaunch: () => {
+    return ipcRenderer.invoke('get-auto-launch');
+  },
+  
+  setAutoLaunch: (enabled) => {
+    return ipcRenderer.invoke('set-auto-launch', enabled);
+  },
+  
+  // Update today's stats for tray widget
+  updateTodayStats: (stats) => {
+    return ipcRenderer.invoke('update-today-stats', stats);
+  },
+  
   // Listen for navigation commands from main process
   onNavigate: (callback) => {
     ipcRenderer.on('navigate', (event, route) => callback(route));
