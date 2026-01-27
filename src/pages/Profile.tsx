@@ -8,6 +8,7 @@ import { XPProgressRing } from '@/components/dashboard/XPProgressRing';
 import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
 import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { ColorThemePicker } from '@/components/profile/ColorThemePicker';
+import { DesktopAppSettings } from '@/components/profile/DesktopAppSettings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -101,6 +102,9 @@ export default function Profile() {
             </CardContent>
           </Card>
         )}
+
+        {/* Desktop App Settings */}
+        <DesktopAppSettings />
 
         {/* Color Theme Picker */}
         <ColorThemePicker />
