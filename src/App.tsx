@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useElectronNotifications, useElectronNavigation } from "@/hooks/useElectronNotifications";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
@@ -17,6 +18,13 @@ import Goals from "./pages/Goals";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
+// Component to handle Electron-specific functionality
+function ElectronHandler() {
+  useElectronNotifications();
+  useElectronNavigation();
+  return null;
+}
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -26,6 +34,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <GoalDeadlineNotifications />
+        <ElectronHandler />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
