@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,11 +12,51 @@ serve(async (req) => {
   }
 
   try {
-    const { age, weight_kg, height_cm, gender, activity_level } = await req.json();
-    
-    if (!age || !weight_kg || !height_cm || !gender) {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userData, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.json();
+    const age = parseInt(body.age);
+    const weight_kg = parseFloat(body.weight_kg);
+    const height_cm = parseFloat(body.height_cm);
+    const validGenders = ['male', 'female', 'other'];
+    const validActivity = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
+    const gender = validGenders.includes(body.gender) ? body.gender : null;
+    const activity_level = validActivity.includes(body.activity_level) ? body.activity_level : 'moderate';
+
+    if (!age || age < 10 || age > 120) {
+      return new Response(JSON.stringify({ error: 'Invalid age (must be 10-120)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (!weight_kg || weight_kg < 20 || weight_kg > 500) {
+      return new Response(JSON.stringify({ error: 'Invalid weight (must be 20-500 kg)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (!height_cm || height_cm < 50 || height_cm > 300) {
+      return new Response(JSON.stringify({ error: 'Invalid height (must be 50-300 cm)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (!gender) {
       return new Response(
-        JSON.stringify({ error: 'Profile data is incomplete. Please provide age, weight, height, and gender.' }),
+        JSON.stringify({ error: 'Invalid gender (must be male, female, or other)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
