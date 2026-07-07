@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,9 +27,30 @@ serve(async (req) => {
   }
 
   try {
-    const { query, quantity = 100, unit = 'grams' } = await req.json();
-    
-    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', found: false }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userData, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', found: false }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.json();
+    const query = typeof body.query === 'string' ? body.query.slice(0, 200) : '';
+    const quantity = Math.max(0.1, Math.min(10000, parseFloat(body.quantity) || 100));
+    const unit = ['grams', 'quantity'].includes(body.unit) ? body.unit : 'grams';
+
+    if (!query || query.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: 'Search query is required', found: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
