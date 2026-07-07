@@ -136,8 +136,7 @@ const createMockSupabaseClient = () => {
     },
 
     from: (table: string) => {
-      let filterCol: string | null = null;
-      let filterVal: any = null;
+      const filters: { col: string; val: any; type: string }[] = [];
       let orderCol: string | null = null;
       let orderAscending = true;
       let limitVal: number | null = null;
@@ -145,6 +144,7 @@ const createMockSupabaseClient = () => {
       let deleteCalled = false;
       let updateData: any = null;
       let insertData: any = null;
+      let upsertData: any = null;
 
       const executeQuery = () => {
         let items = getLocalData(table);
@@ -157,6 +157,19 @@ const createMockSupabaseClient = () => {
               id: currentUser.id,
               display_name: currentUser.user_metadata?.display_name || 'Demo User',
               avatar_url: currentUser.user_metadata?.avatar_url || '',
+              xp_points: 120,
+              level: 2,
+              current_streak: 5,
+              best_streak: 10,
+              streak_freeze_count: 1,
+              total_tasks_completed: 12,
+              calorie_goal: 2000,
+              activity_level: 'moderate',
+              age: 25,
+              weight_kg: 70,
+              height_cm: 175,
+              gender: 'male',
+              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }];
             setLocalData(table, items);
@@ -168,54 +181,62 @@ const createMockSupabaseClient = () => {
             setLocalData(table, items);
           } else if (table === 'tasks') {
             items = [
-              { id: 't1', user_id: currentUser.id, title: 'Plan weekly roadmap', status: 'pending', priority: 'high', category: 'work', due_date: new Date().toISOString() },
-              { id: 't2', user_id: currentUser.id, title: 'Workout session', status: 'completed', priority: 'medium', category: 'health', due_date: new Date().toISOString() }
+              { id: 't1', user_id: currentUser.id, title: 'Plan weekly roadmap', status: 'pending', priority: 'high', category: 'work', due_date: new Date().toISOString(), scheduled_date: new Date().toISOString().split('T')[0] },
+              { id: 't2', user_id: currentUser.id, title: 'Workout session', status: 'completed', priority: 'medium', category: 'health', due_date: new Date().toISOString(), scheduled_date: new Date().toISOString().split('T')[0], is_completed: true }
             ];
             setLocalData(table, items);
           }
         }
 
-        // Apply filtering (simulated)
-        if (filterCol && filterVal !== null) {
+        // Apply filters
+        filters.forEach(f => {
           items = items.filter(item => {
-            const val = item[filterCol!];
-            if (Array.isArray(filterVal)) {
-              return filterVal.includes(val);
+            const itemVal = item[f.col];
+            if (f.type === 'eq') {
+              if (Array.isArray(f.val)) return f.val.includes(itemVal);
+              return String(itemVal) === String(f.val);
             }
-            return String(val) === String(filterVal);
+            if (f.type === 'neq') return String(itemVal) !== String(f.val);
+            if (f.type === 'gte') return new Date(itemVal) >= new Date(f.val) || itemVal >= f.val;
+            if (f.type === 'lte') return new Date(itemVal) <= new Date(f.val) || itemVal <= f.val;
+            return true;
           });
-        }
+        });
 
-        // Handle modifications
+        // Handle delete
         if (deleteCalled) {
           const original = getLocalData(table);
           const remaining = original.filter(item => {
-            if (filterCol && filterVal !== null) {
-              return String(item[filterCol]) !== String(filterVal);
-            }
-            return false;
+            const matchesFilters = filters.every(f => {
+              const itemVal = item[f.col];
+              return String(itemVal) === String(f.val);
+            });
+            return !matchesFilters;
           });
           setLocalData(table, remaining);
           return remaining;
         }
 
+        // Handle update
         if (updateData) {
           const original = getLocalData(table);
           const updatedList = original.map(item => {
-            if (filterCol && filterVal !== null && String(item[filterCol]) === String(filterVal)) {
+            const matchesFilters = filters.every(f => {
+              const itemVal = item[f.col];
+              return String(itemVal) === String(f.val);
+            });
+            if (matchesFilters) {
               return { ...item, ...updateData, updated_at: new Date().toISOString() };
             }
             return item;
           });
           setLocalData(table, updatedList);
           return updatedList.filter(item => {
-            if (filterCol && filterVal !== null) {
-              return String(item[filterCol]) === String(filterVal);
-            }
-            return true;
+            return filters.every(f => String(item[f.col]) === String(f.val));
           });
         }
 
+        // Handle insert
         if (insertData) {
           const original = getLocalData(table);
           const newItems = Array.isArray(insertData) 
@@ -225,6 +246,40 @@ const createMockSupabaseClient = () => {
           const combined = [...original, ...newItems];
           setLocalData(table, combined);
           return newItems;
+        }
+
+        // Handle upsert
+        if (upsertData) {
+          const original = getLocalData(table);
+          const upsertList = Array.isArray(upsertData) ? upsertData : [upsertData];
+          const updatedOriginal = original.map(item => {
+            const matchingUpsert = upsertList.find(u => {
+              if (table === 'daily_goals') {
+                return u.goal_date === item.goal_date && (u.user_id === item.user_id || currentUser?.id === item.user_id);
+              }
+              return u.id === item.id;
+            });
+            if (matchingUpsert) {
+              return { ...item, ...matchingUpsert, updated_at: new Date().toISOString() };
+            }
+            return item;
+          });
+
+          const nonMatchingUpserts = upsertList.filter(u => {
+            if (table === 'daily_goals') {
+              return !original.some(item => item.goal_date === u.goal_date && (item.user_id === u.user_id || currentUser?.id === item.user_id));
+            }
+            return !original.some(item => item.id === u.id);
+          }).map(u => ({ id: Math.random().toString(36).substr(2, 9), user_id: currentUser?.id, created_at: new Date().toISOString(), ...u }));
+
+          const combined = [...updatedOriginal, ...nonMatchingUpserts];
+          setLocalData(table, combined);
+          return [...updatedOriginal.filter(item => {
+            if (table === 'daily_goals') {
+              return upsertList.some(u => u.goal_date === item.goal_date);
+            }
+            return upsertList.some(u => u.id === item.id);
+          }), ...nonMatchingUpserts];
         }
 
         // Apply sorting
@@ -260,20 +315,32 @@ const createMockSupabaseClient = () => {
           updateData = data;
           return chain;
         },
+        upsert: (data: any) => {
+          upsertData = data;
+          return chain;
+        },
         delete: () => {
           deleteCalled = true;
           return chain;
         },
         eq: (col: string, val: any) => {
-          filterCol = col;
-          filterVal = val;
+          filters.push({ col, val, type: 'eq' });
           return chain;
         },
-        neq: (col: string, val: any) => chain,
+        neq: (col: string, val: any) => {
+          filters.push({ col, val, type: 'neq' });
+          return chain;
+        },
         gt: (col: string, val: any) => chain,
-        gte: (col: string, val: any) => chain,
+        gte: (col: string, val: any) => {
+          filters.push({ col, val, type: 'gte' });
+          return chain;
+        },
         lt: (col: string, val: any) => chain,
-        lte: (col: string, val: any) => chain,
+        lte: (col: string, val: any) => {
+          filters.push({ col, val, type: 'lte' });
+          return chain;
+        },
         or: (val: string) => chain,
         order: (col: string, options?: { ascending?: boolean }) => {
           orderCol = col;
