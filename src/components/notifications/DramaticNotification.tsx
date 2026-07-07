@@ -69,7 +69,7 @@ export function DramaticNotification({ isOpen, onClose, reminder }: DramaticNoti
       if ('Notification' in window && Notification.permission === 'granted' && reminder) {
         new Notification('⚡ Reminder Alert!', {
           body: reminder.content,
-          icon: '/placeholder.svg',
+          icon: '/favicon.ico',
           tag: 'reminder-notification',
         });
       }
