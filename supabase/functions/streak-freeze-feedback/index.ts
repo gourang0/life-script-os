@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,31 @@ serve(async (req) => {
   }
 
   try {
-    const { reason_category, reason_details, was_genuine, streak_days } = await req.json();
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userData, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.json();
+    // Input validation & sanitization
+    const reason_category = String(body.reason_category ?? '').slice(0, 100);
+    const reason_details = String(body.reason_details ?? '').slice(0, 500);
+    const was_genuine = Boolean(body.was_genuine);
+    const streak_days = Math.max(0, Math.min(10000, parseInt(body.streak_days) || 0));
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
