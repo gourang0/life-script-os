@@ -43,7 +43,7 @@ mobile/
 ## Setup Instructions
 
 1. **Open in Android Studio**: File → Open → Select the `mobile` folder
-
+``
 2. **Configure Supabase**:
    - Open `app/src/main/java/com/lifescriptos/data/remote/SupabaseConfig.kt`
    - Update `SUPABASE_URL` and `SUPABASE_KEY` with your project credentials

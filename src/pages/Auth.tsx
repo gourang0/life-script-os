@@ -31,7 +31,7 @@ export default function Auth() {
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
-    defaultValues: { email: '', password: '', displayName: '' },
+    defaultValues: { email: 'demo@lifescript.com', password: 'demopassword123', displayName: 'Demo User' },
   });
 
   // Redirect if already logged in
@@ -58,6 +58,36 @@ export default function Auth() {
     sessionStorage.setItem('lampIntroShown', 'true');
     setShowIntro(false);
     setTimeout(() => setShowContent(true), 100);
+  };
+
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    const demoEmail = 'demo@lifescript.com';
+    const demoPassword = 'demopassword123';
+    try {
+      let { error } = await signIn(demoEmail, demoPassword);
+      
+      // If the user does not exist in this Supabase instance yet, sign them up
+      if (error && (
+        error.message.toLowerCase().includes('invalid login credentials') || 
+        error.message.toLowerCase().includes('user not found') ||
+        error.message.toLowerCase().includes('invalid credentials')
+      )) {
+        const signupRes = await signUp(demoEmail, demoPassword, 'Demo User');
+        error = signupRes.error;
+      }
+
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Welcome to Demo Mode!', description: 'Redirecting to dashboard...' });
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'An unexpected error occurred', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onSubmit = async (data: AuthFormData) => {
@@ -253,6 +283,17 @@ export default function Auth() {
                           </>
                         )}
                       </span>
+                    </Button>
+
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      className="w-full h-12 text-base font-semibold border-primary/30 hover:border-primary/80 transition-colors flex items-center justify-center gap-2 text-primary"
+                      disabled={loading}
+                      onClick={handleDemoLogin}
+                    >
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      Explore Demo Account
                     </Button>
                   </form>
                 </Form>
