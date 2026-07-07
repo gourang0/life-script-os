@@ -40,7 +40,12 @@ serve(async (req) => {
 
     console.log(`Generating motivation for user: ${user.id}`);
 
-    const { level, streak, tasksCompletedToday, tasksPending, totalXP } = await req.json();
+    const body = await req.json();
+    const level = Math.max(1, Math.min(1000, parseInt(body.level) || 1));
+    const streak = Math.max(0, Math.min(10000, parseInt(body.streak) || 0));
+    const tasksCompletedToday = Math.max(0, Math.min(1000, parseInt(body.tasksCompletedToday) || 0));
+    const tasksPending = Math.max(0, Math.min(1000, parseInt(body.tasksPending) || 0));
+    const totalXP = Math.max(0, Math.min(10_000_000, parseInt(body.totalXP) || 0));
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
