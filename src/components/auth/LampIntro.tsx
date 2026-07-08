@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Confetti } from '@/components/ui/confetti';
 
 interface LampIntroProps {
   onComplete: () => void;
+  onLightOn?: () => void;
 }
 
 interface Sparkle {
@@ -23,7 +24,7 @@ const getAudioContext = () => {
   return audioContext;
 };
 
-export function LampIntro({ onComplete }: LampIntroProps) {
+export function LampIntro({ onComplete, onLightOn }: LampIntroProps) {
   const [isLightOn, setIsLightOn] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [showHint, setShowHint] = useState(true);
@@ -33,6 +34,16 @@ export function LampIntro({ onComplete }: LampIntroProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [isGrabbing, setIsGrabbing] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  const dragStartRef = useRef(0);
+  const pullDistanceRef = useRef(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sound effect: Click sound
   const playClickSound = useCallback(() => {
@@ -122,34 +133,89 @@ export function LampIntro({ onComplete }: LampIntroProps) {
     }
   }, [isLightOn]);
 
-  const handleMouseDown = () => {
+  const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
     if (isLightOn) return;
+    setIsDragging(true);
     setIsGrabbing(true);
+    
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    dragStartRef.current = clientY;
+    
     playClickSound();
   };
 
-  const handleMouseUp = () => {
-    if (isLightOn || !isGrabbing) return;
-    
-    setIsGrabbing(false);
-    setIsPulling(true);
-    setShowHint(false);
-    
-    setTimeout(() => {
-      setIsPulling(false);
-      setIsLightOn(true);
-      setIsWiggling(true);
-      playHappyChime();
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const getClientY = (e: MouseEvent | TouchEvent) => {
+      if ('changedTouches' in e && e.changedTouches && e.changedTouches.length > 0) {
+        return e.changedTouches[0].clientY;
+      }
+      if ('touches' in e && e.touches && e.touches.length > 0) {
+        return e.touches[0].clientY;
+      }
+      return (e as MouseEvent).clientY;
+    };
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientY = getClientY(e);
+      const deltaY = clientY - dragStartRef.current;
       
-      setTimeout(() => {
-        setIsWiggling(false);
-      }, 800);
+      const distance = Math.max(0, Math.min(80, deltaY));
+      setPullDistance(distance);
+      pullDistanceRef.current = distance;
+    };
+
+    const handleEnd = (e: MouseEvent | TouchEvent) => {
+      const finalDistance = pullDistanceRef.current;
+      setIsDragging(false);
+      setIsGrabbing(false);
       
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-    }, 400);
-  };
+      const clientY = getClientY(e);
+      const totalMovement = Math.abs(clientY - dragStartRef.current);
+      
+      // Tap/click triggers auto-pull, or pull past threshold triggers it
+      if (totalMovement < 5 || finalDistance > 45) {
+        setIsPulling(true);
+        setShowHint(false);
+        
+        setTimeout(() => {
+          setIsPulling(false);
+          setIsLightOn(true);
+          setIsWiggling(true);
+          setPullDistance(0);
+          pullDistanceRef.current = 0;
+          playHappyChime();
+          if (onLightOn) {
+            onLightOn();
+          }
+          
+          setTimeout(() => {
+            setIsWiggling(false);
+          }, 800);
+          
+          setTimeout(() => {
+            onComplete();
+          }, 2300);
+        }, 150);
+      } else {
+        setPullDistance(0);
+        pullDistanceRef.current = 0;
+      }
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging, onComplete, playHappyChime, onLightOn]);
 
   return (
     <div 
@@ -158,7 +224,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
         background: isLightOn 
           ? 'hsl(var(--background))' 
           : 'linear-gradient(180deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--background)) 100%)',
-        opacity: isLightOn ? 0 : 1,
+        opacity: !mounted ? 0 : (isLightOn ? 0 : 1),
         pointerEvents: isLightOn ? 'none' : 'auto',
         transitionDelay: isLightOn ? '1.2s' : '0s'
       }}
@@ -228,6 +294,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
           style={{
+            transformOrigin: 'bottom center',
             animation: isHovering && !isLightOn ? 'sway 0.5s ease-in-out infinite' : 'none',
           }}
         >
@@ -281,7 +348,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
           {/* Lamp Face - Smiley - positioned on the shade */}
           <div className="absolute top-12 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
             {/* Eyes */}
-            <div className="flex gap-10 mb-3">
+            <div className="flex gap-10 mb-3 items-center justify-center">
               <div 
                 className="rounded-full transition-all duration-300"
                 style={{ 
@@ -319,16 +386,14 @@ export function LampIntro({ onComplete }: LampIntroProps) {
           
           {/* Pull cord attached at the right edge of the lamp shade bottom */}
           <div 
-            className={`absolute z-30 ${isGrabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={() => isGrabbing && setIsGrabbing(false)}
-            onTouchStart={handleMouseDown}
-            onTouchEnd={handleMouseUp}
+            className={`absolute z-30 w-6 flex flex-col items-center ${isGrabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onMouseDown={handleStartDrag}
+            onTouchStart={handleStartDrag}
             style={{
               right: '12px',
               top: '128px',
               transformOrigin: 'top center',
+              touchAction: 'none',
               animation: !isLightOn && !isPulling && !isGrabbing ? 'ropeSwing 3s ease-in-out infinite' : 'none',
             }}
           >
@@ -343,19 +408,19 @@ export function LampIntro({ onComplete }: LampIntroProps) {
             />
             {/* Cord - braided rope that extends when pulled */}
             <div 
-              className="w-1 mx-auto rounded-full"
+              className="w-1 rounded-full"
               style={{
-                height: isPulling ? '110px' : isGrabbing ? '90px' : '70px',
+                height: isPulling ? '120px' : `${70 + pullDistance}px`,
                 background: isLightOn 
                   ? 'linear-gradient(180deg, #D4A574 0%, #C19660 50%, #B8860B 100%)' 
                   : 'linear-gradient(180deg, #A08060 0%, #8B7355 50%, #6B5344 100%)',
                 boxShadow: '1px 0 2px rgba(0,0,0,0.2)',
-                transition: 'height 0.15s ease-out',
+                transition: isDragging ? 'none' : 'height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               }}
             />
             {/* Pull ball/tassel - decorative brass ball */}
             <div 
-              className="w-6 h-8 mx-auto rounded-full shadow-lg"
+              className="w-6 h-8 rounded-full shadow-lg"
               style={{
                 background: isLightOn 
                   ? 'radial-gradient(circle at 30% 30%, #FFD700, #DAA520, #B8860B)' 
@@ -403,7 +468,7 @@ export function LampIntro({ onComplete }: LampIntroProps) {
           style={{
             background: isLightOn 
               ? 'linear-gradient(180deg, #FFD700 0%, #DAA520 100%)' 
-              : 'linear-gradient(180deg, #A0826D 0%, #8B7355 100)',
+              : 'linear-gradient(180deg, #A0826D 0%, #8B7355 100%)',
           }}
         />
         
@@ -496,9 +561,11 @@ export function LampIntro({ onComplete }: LampIntroProps) {
       
       {/* Floor shadow */}
       <div 
-        className="absolute bottom-16 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full blur-md transition-all duration-500"
+        className="absolute bottom-16 left-1/2 w-32 h-4 rounded-full blur-md transition-all duration-500"
         style={{
           background: isLightOn ? 'hsl(var(--accent) / 0.4)' : 'rgba(0,0,0,0.2)',
+          transform: isLightOn ? 'translate(-50%, 0)' : undefined,
+          animation: !isLightOn ? 'shadowPulse 3s ease-in-out infinite' : 'none',
         }}
       />
       
@@ -535,8 +602,19 @@ export function LampIntro({ onComplete }: LampIntroProps) {
         }
         
         @keyframes sway {
-          0%, 100% { transform: rotate(-1deg); }
-          50% { transform: rotate(1deg); }
+          0%, 100% { transform: rotate(-3deg); }
+          50% { transform: rotate(3deg); }
+        }
+        
+        @keyframes shadowPulse {
+          0%, 100% { 
+            transform: translate(-50%, 0) scale(1);
+            opacity: 1;
+          }
+          50% { 
+            transform: translate(-50%, 0) scale(0.85);
+            opacity: 0.65;
+          }
         }
         
         @keyframes pulseGlow {

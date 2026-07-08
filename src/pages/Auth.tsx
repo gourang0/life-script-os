@@ -54,10 +54,16 @@ export default function Auth() {
     }
   }, []);
 
+  const handleLightOn = () => {
+    setTimeout(() => {
+      setShowContent(true);
+    }, 1200);
+  };
+
   const handleIntroComplete = () => {
     sessionStorage.setItem('lampIntroShown', 'true');
     setShowIntro(false);
-    setTimeout(() => setShowContent(true), 100);
+    setShowContent(true);
   };
 
   const handleDemoLogin = async () => {
@@ -124,14 +130,19 @@ export default function Auth() {
 
   return (
     <>
-      {showIntro && lampEnabled && <LampIntro onComplete={handleIntroComplete} />}
+      {showIntro && lampEnabled && (
+        <LampIntro 
+          onComplete={handleIntroComplete} 
+          onLightOn={handleLightOn}
+        />
+      )}
       
       <div className="min-h-screen relative overflow-hidden">
         <AnimatedBackground />
         
         {/* Top right controls */}
         {showContent && (
-          <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
+          <div className="fixed top-4 right-4 z-20 flex items-center gap-2 animate-fade-in">
             {/* Toggle lamp button */}
             <button
               onClick={toggleLampEnabled}
